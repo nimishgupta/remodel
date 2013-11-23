@@ -1,0 +1,17 @@
+OASISFormat: 0.3
+Name:        remodel
+Version:     0.1
+Synopsis:    Build system (like make) that used md5 to determine builds
+  rather than timestamps
+Authors:     Nimish Gupta
+License:     LGPL
+
+Executable remodel
+  Path:       .
+  BuildTools: ocamlbuild
+  MainIs:     main.ml
+  
+Library core
+  Path:       lib
+  BuildTools: ocamlbuild
+  
