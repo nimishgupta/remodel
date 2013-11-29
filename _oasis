@@ -13,5 +13,9 @@ Executable remodel
   
 Library core
   Path:       lib
+  InternalModules:
+    Lexer,
+    Parser
+  Modules:
+    Dependencies
   BuildTools: ocamlbuild
-  
