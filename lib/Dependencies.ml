@@ -35,11 +35,9 @@ struct
              action : action option;
            }
 
-  (* TODO : Modify according to file type *)
-  (* Can pervasives compare record types? *)
   let hash v = Hashtbl.hash v.file
-  let compare v v' = Pervasives.compare v.file v'.file
-  let equal v v' = v.file = v'.file
+  let compare x y = Pervasives.compare x.file y.file
+  let equal x y = x.file = y.file
 end
 
 
@@ -58,7 +56,6 @@ let find_target (rules : rules_map) (file : file) : V.t =
   with Not_found -> { V.file = File file; V.action = None }
 
 
-(* Should accept a binded function *)
 let process_rule (file_to_target : string -> V.t) (trgt : target) ((fs, actn) : files * action option) (_ : unit) : unit =
   let add_dag_edge_sink = G.add_edge g {V.file = trgt; V.action = actn} in
   List.iter add_dag_edge_sink (List.map file_to_target fs)
@@ -66,3 +63,6 @@ let process_rule (file_to_target : string -> V.t) (trgt : target) ((fs, actn) : 
   
 let build_graph (rules : rules_map) : unit =
   M.fold (process_rule (find_target rules)) rules ()
+
+
+
