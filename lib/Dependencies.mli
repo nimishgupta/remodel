@@ -1,8 +1,9 @@
-type action = string option
-type files  = string list
+type action = string
+type file   = string
+type files  = file list
 
 type target =
-  | Files of files
+  | File of file
   | Default
 
-type dependencies = (target * files * action) list
+type dependencies = (target * files * action option) list
