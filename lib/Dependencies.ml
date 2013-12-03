@@ -25,9 +25,6 @@ let assoc_list_to_map (alst : dependencies) : rules_map =
 
 open Graph
 
-(* Need to implement comparable interface *)
-
-
 module Vertex = 
 struct 
   type t = {
@@ -39,7 +36,6 @@ struct
   let compare x y = Pervasives.compare x.file y.file
   let equal x y = x.file = y.file
 end
-
 
 
 
@@ -61,8 +57,17 @@ let process_rule (file_to_target : string -> V.t) (trgt : target) ((fs, actn) : 
   List.iter add_dag_edge_sink (List.map file_to_target fs)
   
   
+(* Add arbitrary target support *)
 let build_graph (rules : rules_map) : unit =
   M.fold (process_rule (find_target rules)) rules ()
 
 
+module D = Graph.Traverse.Dfs (G)
 
+let has_cycle (_ : unit) : bool = D.has_cycle g
+
+
+(* topological sort *)
+module T = Graph.Topological.Make (G)
+
+let rev_topo = T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) g []
