@@ -19,6 +19,8 @@ Executable remodel
   BuildTools: ocamlbuild
   MainIs:     main.ml
   CompiledObject: native
+  BuildDepends:
+    core
   
 Library core
   Path:       lib

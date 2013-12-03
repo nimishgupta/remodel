@@ -73,8 +73,6 @@ module T = Graph.Topological.Make (G)
 let rev_topo () = T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) g []
 
 (* TODO : Put in a "parallel" module that provides an iter or fold function *)
-
-(* TODO : New module *)
 module TSM = Map.Make (struct
   type t = V.t
   let compare = V.compare
@@ -106,6 +104,7 @@ let happens_before' (m : logical_ts) : inverted_ts =
               ITSM.add ts (v :: (try ITSM.find ts m' with Not_found -> [])) m') m ITSM.empty
 
 
+(* TODO : make it mature *)
 let rec worker (chan : 'a Event.channel) = 
   let node = Event.sync (Event.receive chan) in
   ignore (match node.V.action with
@@ -113,6 +112,7 @@ let rec worker (chan : 'a Event.channel) =
     | None -> 0); worker chan
     
 
+(* TODO : Handle creation errors *)
 let rec thread_pool (n : int) (chan : 'a Event.channel) : unit =
   if n > 0 then begin ignore (Thread.create worker chan); thread_pool (n - 1) chan end
 
@@ -121,6 +121,6 @@ let (|>) v f = f v
 
 let imap () = rev_topo () |> happens_before |> happens_before'
 
-let build order (imap : inverted_ts) (chan : 'a Event.channel) : unit =
+let ordered_build (imap : inverted_ts) (chan : 'a Event.channel) : unit =
   let process _ vlst = List.iter (fun v -> Event.sync (Event.send chan v)) vlst
   in ITSM.iter process imap
