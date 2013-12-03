@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 5dfe07e450bcfce4d915f10632537334)
+# DO NOT EDIT (digest: d2edad935783061376c973d8f91bb1ce)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -13,8 +13,15 @@
 ".git": not_hygienic
 "_darcs": -traverse
 "_darcs": not_hygienic
+# Executable test_thread
+"test_threads.byte": pkg_threads
+"test_threads.byte": pkg_unix
+<*.ml{,i}>: pkg_threads
+<*.ml{,i}>: pkg_unix
 # Executable remodel
 # Library core
 "lib/core.cmxs": use_core
 <lib/*.ml{,i}>: pkg_ocamlgraph
+<lib/*.ml{,i}>: pkg_threads
+<lib/*.ml{,i}>: pkg_unix
 # OASIS_STOP

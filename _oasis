@@ -6,6 +6,14 @@ Synopsis:    Build system (like make) that used md5 to determine builds
 Authors:     Nimish Gupta
 License:     LGPL
 
+Executable test_thread
+  Path:       .
+  BuildTools: ocamlbuild
+  MainIs: test_threads.ml
+  BuildDepends:
+    threads,
+    unix
+
 Executable remodel
   Path:       .
   BuildTools: ocamlbuild
@@ -14,7 +22,9 @@ Executable remodel
 Library core
   Path:       lib
   BuildDepends:
-    ocamlgraph
+    ocamlgraph,
+    threads,
+    unix
   InternalModules:
     Lexer,
     Parser

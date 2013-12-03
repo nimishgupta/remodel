@@ -70,7 +70,7 @@ let has_cycle (_ : unit) : bool = D.has_cycle g
 (* topological sort *)
 module T = Graph.Topological.Make (G)
 
-let rev_topo = T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) g []
+let rev_topo () = T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) g []
 
 (* TODO : Put in a "parallel" module that provides an iter or fold function *)
 
@@ -86,18 +86,41 @@ let happens_before (vlst : V.t list) : logical_ts =
   let f = fun (v : V.t) (ts_map : logical_ts) -> 
           if (G.in_degree g v) > 0 
           then let preds = G.pred g v in 
-               let maxdist = List.fold_right (fun (v : V.t) (dist : int) -> let cur_dist = try TSM.find v ts_map with Not_found -> 0 in max dist cur_dist) preds 0 in TSM.add v (maxdist + 1) ts_map
+               let maxdist = List.fold_right (fun (v : V.t) (dist : int) ->
+                                                 let cur_dist = try TSM.find v ts_map with Not_found -> 0
+                                                 in max dist cur_dist)
+                             preds 0 in
+                             TSM.add v (maxdist + 1) ts_map
           else TSM.add v 0 ts_map
-  in List.fold_right f rev_topo TSM.empty
+  in List.fold_right f vlst TSM.empty
 
 
 (* Construct an inverted map *)
-(* TODO : New map module *)
 module ITSM = Map.Make (struct
   type t = int
   let compare = Pervasives.compare
 end)
 type inverted_ts = V.t list ITSM.t
 let happens_before' (m : logical_ts) : inverted_ts =
-  TSM.fold (fun (v : V.t) (ts : int) (m' : inverted_ts) -> ITSM.add ts (v :: (try ITSM.find ts m' with Not_found -> [])) m') m ITSM.empty
+  TSM.fold (fun (v : V.t) (ts : int) (m' : inverted_ts) ->
+              ITSM.add ts (v :: (try ITSM.find ts m' with Not_found -> [])) m') m ITSM.empty
 
+
+let rec worker (chan : 'a Event.channel) = 
+  let node = Event.sync (Event.receive chan) in
+  ignore (match node.V.action with
+    | Some a -> Sys.command a
+    | None -> 0); worker chan
+    
+
+let rec thread_pool (n : int) (chan : 'a Event.channel) : unit =
+  if n > 0 then begin ignore (Thread.create worker chan); thread_pool (n - 1) chan end
+
+
+let (|>) v f = f v
+
+let imap () = rev_topo () |> happens_before |> happens_before'
+
+let build order (imap : inverted_ts) (chan : 'a Event.channel) : unit =
+  let process _ vlst = List.iter (fun v -> Event.sync (Event.send chan v)) vlst
+  in ITSM.iter process imap
