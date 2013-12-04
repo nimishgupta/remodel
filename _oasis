@@ -33,5 +33,6 @@ Library core
     Parser
   Modules:
     DB,
-    Dependencies
+    Dependencies,
+    DirtySet
   BuildTools: ocamlbuild
