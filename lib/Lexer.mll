@@ -2,9 +2,9 @@
   open Parser
 }
 
-let blank = [ ' ' '\t' ]
+let blank   = [ ' ' '\t' ]
 let newline = '\n' | '\r' | "\r\n"
-let file   = [^ '\000' ':' ',' '<' '\n' ] +
+let file    = [^ '\000' ':' ',' '<' '\n' ] +
 
 rule token = parse
   | blank+      { token lexbuf                         }
