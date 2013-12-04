@@ -32,5 +32,6 @@ Library core
     Lexer,
     Parser
   Modules:
+    DB,
     Dependencies
   BuildTools: ocamlbuild

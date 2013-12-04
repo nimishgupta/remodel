@@ -1,8 +1,3 @@
-
-(* Look for -f switch or "remodelfile" or "RemodelFile"
-   Parse  and build
-*)
-
 (* TODO *)
 (* Command line switches 
     - -j for controlling parallelism
@@ -13,8 +8,16 @@
     - -s for silent mode (no printing of action)
 *)
 
-(* Model as a list *)
+
+(* TODO : if a filename is specified on command line then change process root as per the directory *)
+
+
+(* TODO : Use at_exit to dump file *)
+
 let default = ["remodelfile"; "Remodelfile"]
+
+
+(* let error str code = print_string str; print_newline (); *)
 
 let remodel (file : string) : unit = 
   let cin = open_in file in
