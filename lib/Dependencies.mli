@@ -34,6 +34,7 @@ module Vertex: sig
   val equal: t -> t -> bool
 end
 
+val thread_pool: int -> Vertex.t Event.channel -> unit
 
 val ordered_build: inverted_ts -> Vertex.t Event.channel -> unit
 

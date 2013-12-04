@@ -24,6 +24,7 @@ let build (file : string) : unit =
   (* TODO : Give help as to what is cycle is *)
   if Dependencies.has_cycle () then print_string "remodel: cyclic dependency detected"
   else let chan = Event.new_channel () in
+       Dependencies.thread_pool 10 chan; 
        Dependencies.ordered_build (Dependencies.imap ()) chan
 
 let () = 

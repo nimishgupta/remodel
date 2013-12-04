@@ -6,7 +6,6 @@
 %token BUILT_BY
 %token COMMA
 %token DEFAULT
-%token EXECUTING
 %token EOF
 %token <string> FILE
 
@@ -29,9 +28,9 @@ targets:
 
 /* TODO : Should not allow multiple default productions */
 production:
-  | DEFAULT BUILT_BY targets                 { Dependencies.Default, $3, None    }
-  | target  BUILT_BY files                   { Dependencies.File $1, $3, None    }
-  | target  BUILT_BY files EXECUTING ACTION  { Dependencies.File $1, $3, Some $5 }
+  | DEFAULT BUILT_BY targets                { Dependencies.Default, $3, None    }
+  | target  BUILT_BY files                  { Dependencies.File $1, $3, None    }
+  | target  BUILT_BY files ACTION { Dependencies.File $1, $3, Some $4 }
 
 productions:
   | production             { [$1] }

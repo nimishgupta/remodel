@@ -2,14 +2,20 @@
   open Parser
 }
 
-let action = '"' _+ '"' '\n' 
-let file   = [^ '\000']+
+let blank = [ ' ' '\t' ]
+let newline = '\n' | '\r' | "\r\n"
+let file   = [^ '\000' ':' ',' '<' '\n' ] +
 
 rule token = parse
-  | eof         { EOF       }
-  | action as a { ACTION a  }
-  | "<-"        { BUILT_BY  }
-  | ","         { COMMA     }
-  | "DEFAULT"   { DEFAULT   }
-  | ":"         { EXECUTING }
-  | file as f   { FILE f    }
+  | blank+      { token lexbuf                         }
+  | '\n'        { Lexing.new_line lexbuf; token lexbuf }
+  | eof         { EOF                                  }
+  | "<-"        { BUILT_BY                             }
+  | ","         { COMMA                                }
+  | "DEFAULT"   { DEFAULT                              }
+  | ":"         { action lexbuf                        }
+  | file as f   { FILE (String.trim f)                 }
+
+and action = parse
+  | [^ '\n']+ as a { ACTION (String.trim a); }
+  | '\n'           { Lexing.new_line lexbuf; token lexbuf }

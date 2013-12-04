@@ -108,7 +108,7 @@ let happens_before' (m : logical_ts) : inverted_ts =
 let rec worker (chan : 'a Event.channel) = 
   let node = Event.sync (Event.receive chan) in
   ignore (match node.V.action with
-    | Some a -> Sys.command a
+    | Some a -> (* Sys.command a *) print_string a; print_newline (); 0
     | None -> 0); worker chan
     
 
