@@ -32,7 +32,9 @@ Library core
     Lexer,
     Parser
   Modules:
+    DAG,
     DB,
-    Dependencies,
-    DirtySet
+    DirtySet,
+    Rules,
+    Vertex
   BuildTools: ocamlbuild

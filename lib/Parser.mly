@@ -1,42 +1,41 @@
 %{
-  module DPDS = Dependencies
+  open Rules
 %}
 
 %token <string> ACTION
 %token BUILT_BY
 %token COMMA
-%token DEFAULT
 %token EOF
 %token <string> FILE
 
 %start program
 
-%type <Dependencies.dependencies> program
+%type <Rules.t> program
 
 %%
 
 /* TODO : pass position for displaying error messages */
 files:
-  | FILE              { [$1] } 
+  | FILE              { [$1]     } 
   | FILE COMMA files  { $1 :: $3 }
 
 target:
   | FILE { $1 }
 
+/* TODO : Make use of "targets" production */
 targets:
   | files { $1 }
 
-/* TODO : Should not allow multiple default productions */
+/* TODO : Allow multiple targets (Consult make) */
 production:
-  | DEFAULT BUILT_BY targets                { Dependencies.Default, $3, None    }
-  | target  BUILT_BY files                  { Dependencies.File $1, $3, None    }
-  | target  BUILT_BY files ACTION { Dependencies.File $1, $3, Some $4 }
+  | target BUILT_BY files        { to_target $1, to_deps $3, to_action None    }
+  | target BUILT_BY files ACTION { to_target $1, to_deps $3, to_action Some $4 }
 
 productions:
   | production             { [$1] }
   | production productions { $1 :: $2 }
 
 program:
-  | productions EOF { $1 }
+  | productions EOF { to_rules $1 }
 
 %%

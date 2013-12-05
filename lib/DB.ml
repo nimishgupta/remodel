@@ -55,25 +55,26 @@ let populate tbl path =
   
 
 let init () = 
+  let path = Filename.concat dirname filename in
   let dir_exists  = Sys.file_exists dirname in
   let file_exists = Sys.file_exists filename in
-  let path = Filename.concat dirname filename in
   match dir_exists, file_exists with
     | false, _    -> create_dir dirname; create_file path
     | true, false -> create_file path
     | true, true  -> populate tbl path
         
 
+(* TODO : Should be string based instead of directly accessing md5, leave md5 to clients of this module *)
 let touch (path : string) : unit = Hashtbl.replace tbl path (Digest.file path)
 
 let get_file_sig (path : string) : string = Hashtbl.find tbl path
 
 
 let move (src : string) (dst : string) : unit =
-   if Sys.file_exists dst then Sys.rename dst (dst ^ ".orig");
+   if Sys.file_exists dst then Sys.rename dst (dst ^ ".org");
    Sys.rename src dst;
    Sys.remove src;
-   if Sys.file_exists (dst ^ ".orig") then Sys.remove (dst ^ ".orig")
+   if Sys.file_exists (dst ^ ".orig") then Sys.remove (dst ^ ".org")
 
   
   

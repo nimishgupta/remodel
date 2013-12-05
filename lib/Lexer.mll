@@ -12,7 +12,6 @@ rule token = parse
   | eof         { EOF                                  }
   | "<-"        { BUILT_BY                             }
   | ","         { COMMA                                }
-  | "DEFAULT"   { DEFAULT                              }
   | ":"         { action lexbuf                        }
   | file as f   { FILE (String.trim f)                 }
 
