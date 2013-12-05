@@ -7,10 +7,11 @@ module G = Imperative.Digraph.Concrete (V)
 
 let g = G.create ()
 
-let process_rule (trgt : Rules.target) 
+let process_rule (action_of : Rules.target -> Rules.action) 
+                 (trgt : Rules.target) 
                  (deps : Rules.deps)
                  (actn : Rules.action)
-                 (action_of : Rules.target -> Rules.action) : unit =
+                 : unit =
   let open Vertex in
   let open Rules  in
   let open List   in
@@ -21,7 +22,8 @@ let process_rule (trgt : Rules.target)
 
 (* TODO : Add arbitrary target support *)
 let build_graph (rules : Rules.t) : unit =
-  ignore (Rules.fold process_rule rules (Rules.rule_action rules))
+  let action_of = Rules.rule_action rules in
+  Rules.iter (process_rule action_of) rules
 
 
 module D = Graph.Traverse.Dfs (G)
@@ -66,6 +68,7 @@ let happens_before' (m : logical_ts) : inverted_ts =
               ITSM.add ts (v :: (try ITSM.find ts m' with Not_found -> [])) m') m ITSM.empty
 
 
+(*
 (* TODO : make it mature *)
 let rec worker (chan : 'a Event.channel) = 
   let node = Event.sync (Event.receive chan) in
@@ -77,6 +80,7 @@ let rec worker (chan : 'a Event.channel) =
 (* TODO : Handle creation errors *)
 let rec thread_pool (n : int) (chan : 'a Event.channel) : unit =
   if n > 0 then begin ignore (Thread.create worker chan); thread_pool (n - 1) chan end
+*)
 
 
 let (|>) v f = f v

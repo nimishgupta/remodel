@@ -1,5 +1,7 @@
-type action = string
-type file   = string
+type cmd  = string
+type file = string
+
+type action = cmd option
 type deps   = file list
 
 type target =
@@ -14,40 +16,43 @@ let to_deps (flst : file list) : deps = flst
 
 let to_action (action : string option) : action = action
 
-let exec_action (action: action) : int = match action with
+let exec_action (action : action) : int = match action with
   | Some a -> Sys.command a
   | None -> 0
 
 
-module Rules = Map.Make (String)
+module Rules = Map.Make (struct
+  type t = target
+  let compare = Pervasives.compare
+end)
 
-type t = (deps * action option) Rules.t
+type t = (deps * action) Rules.t
 
 type rule = target * deps * action
 
 let process (rules : t) ((tgt, deps, actn) : rule) : t =
-  if t.mem tgt rules then 
+  if Rules.mem tgt rules then 
     begin 
-      print_string ("remodel: Warning, duplicate rule, overriding\n")
-      t.add tgt (deps, actn) rules
+      print_string ("remodel: Warning, duplicate rule, overriding\n");
+      Rules.add tgt (deps, actn) rules
     end
-  else t.add tgt (deps, actn) rules
+  else Rules.add tgt (deps, actn) rules
   
 
 let to_rules (rlst : rule list) : t =
-  List.fold_left process rlst t.empty
+  List.fold_left process Rules.empty rlst
 
 
 let rule_action (rules : t) (tgt : target) : action =
-  try let _, actn = t.find tgt rules in actn
+  try let _, actn = Rules.find tgt rules in actn
   with Not_found -> None
 
 
 let iter f rules =
-  let f' trgt (deps, actn) = f trgt deps actn in rules.iter f' rules
+  let f' trgt (deps, actn) = f trgt deps actn in Rules.iter f' rules
 
 let fold f rules acc =
-  let f' trgt (deps, actn) acc' = f trgt deps actn acc' in rules.fold f' rules acc
+  let f' trgt (deps, actn) acc' = f trgt deps actn acc' in Rules.fold f' rules acc
 
 (* XXX : to_target is more elegant *)
 let deps_to_targets deps =

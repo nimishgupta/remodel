@@ -22,14 +22,15 @@ files:
 target:
   | FILE { $1 }
 
-/* TODO : Make use of "targets" production */
+/* TODO : Make use of "targets" production
 targets:
   | files { $1 }
+*/
 
 /* TODO : Allow multiple targets (Consult make) */
 production:
-  | target BUILT_BY files        { to_target $1, to_deps $3, to_action None    }
-  | target BUILT_BY files ACTION { to_target $1, to_deps $3, to_action Some $4 }
+  | target BUILT_BY files        { to_target $1, to_deps $3, to_action None      }
+  | target BUILT_BY files ACTION { to_target $1, to_deps $3, to_action (Some $4) }
 
 productions:
   | production             { [$1] }

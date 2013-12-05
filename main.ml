@@ -28,7 +28,7 @@ let remodel (file : string) : unit =
   (* TODO : Give help in error message as to what is cycle is *)
   if DAG.has_cycle () then print_string "remodel: cyclic dependency detected"
   else let chan = Event.new_channel () in
-       DAG.thread_pool 10 chan; 
+       (* DAG.thread_pool 10 chan; *)
        DAG.ordered_build (DAG.imap ()) chan
 
 let () = 

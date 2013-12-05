@@ -10,8 +10,8 @@ end)
 let set = VertexSet.create 100
 
 
-let is_dirty (v : VertexSet.key) : bool = VertexSet.mem v set
+let is_dirty (v : VertexSet.key) : bool = VertexSet.mem set v
 
-let cleanse (v : VertexSet.key) : unit = VertexSet.remove v set
+let cleanse (v : VertexSet.key) : unit = VertexSet.remove set v
 
-let mark (v : VertexSet.key) : unit = VertexSet.replace v 0 set
+let mark (v : VertexSet.key) : unit = VertexSet.replace set v 0
