@@ -3,9 +3,9 @@ open Graph
 (* XXX : stop using V *)
 module V = Vertex
 
-module G = Imperative.Digraph.Concrete (V)
+module DAG = Imperative.Digraph.Concrete (V)
 
-let g = G.create ()
+let g = DAG.create ()
 
 let process_rule (action_of : Rules.target -> Rules.action) 
                  (trgt : Rules.target) 
@@ -16,7 +16,7 @@ let process_rule (action_of : Rules.target -> Rules.action)
   let open List   in
   let sink = to_vertex trgt actn in
   let srcs = map (fun t -> to_vertex t (action_of t)) (deps_to_targets deps) in
-  iter (fun src -> G.add_edge g src sink) srcs
+  iter (fun src -> DAG.add_edge g src sink) srcs
   
 
 (* TODO : Add arbitrary target support *)
@@ -24,21 +24,17 @@ let build_graph (rules : Rules.t) : unit =
   let action_of = Rules.rule_action rules in
   Rules.iter (process_rule action_of) rules
 
-let succ (v : V.t) : V.t list = G.succ g v
+let succ (v : V.t) : V.t list = DAG.succ g v
 
-
-(* TODO : Cleanup *)
-
-
-module D = Graph.Traverse.Dfs (G)
-
-let has_cycle () : bool = D.has_cycle g
-
+let has_cycle () : bool =
+  let module DFS = Graph.Traverse.Dfs (DAG) in DFS.has_cycle g
 
 (* topological sort *)
-module T = Graph.Topological.Make (G)
+let rev_topo () : V.t list = 
+  let module T = Graph.Topological.Make (DAG) in
+    T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) g []
 
-let rev_topo () = T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) g []
+(* TODO : Cleanup *)
 
 (* TODO : Put in a "parallel" module that provides an iter or fold function *)
 module TSM = Map.Make (struct
@@ -50,8 +46,8 @@ type logical_ts = int TSM.t
 
 let happens_before (vlst : V.t list) : logical_ts = 
   let f = fun (v : V.t) (ts_map : logical_ts) -> 
-          if (G.in_degree g v) > 0 
-          then let preds = G.pred g v in 
+          if (DAG.in_degree g v) > 0 
+          then let preds = DAG.pred g v in 
                let maxdist = List.fold_right (fun (v : V.t) (dist : int) ->
                                                  let cur_dist = try TSM.find v ts_map with Not_found -> 0
                                                  in max dist cur_dist)
@@ -76,6 +72,8 @@ let (|>) v f = f v
 
 let imap () = rev_topo () |> happens_before |> happens_before'
 
+(*
 let ordered_build (imap : inverted_ts) (chan : 'a Event.channel) : unit =
   let process _ vlst = List.iter (fun v -> Event.sync (Event.send chan v)) vlst
   in ITSM.iter process imap
+*)
