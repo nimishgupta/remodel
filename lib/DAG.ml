@@ -25,6 +25,9 @@ let build_graph (rules : Rules.t) : unit =
   Rules.iter (process_rule action_of) rules
 
 
+(* TODO : Cleanup *)
+
+
 module D = Graph.Traverse.Dfs (G)
 
 let has_cycle () : bool = D.has_cycle g

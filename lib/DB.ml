@@ -10,6 +10,9 @@
  * It should provide a dump facility
  *)
 
+
+(* TODO : Model as key value store *)
+
 exception Db_error of string
 
 
@@ -66,7 +69,8 @@ let init () =
 
 let write (path : string) (md5 :string) : unit = Hashtbl.replace tbl path md5
 
-let read (path : string) : string = Hashtbl.find tbl path
+let read (path : string) : string option = 
+  try Some (Hashtbl.find tbl path) with Not_found -> None
 
 
 let move (src : string) (dst : string) : unit =

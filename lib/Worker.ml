@@ -18,6 +18,13 @@
     Digest could not be present in some scenarios
 *)
 
+type t = {
+           target : Rules.target;
+           action : Rules.action;
+           force  : bool;
+           digest : Digest.t option;
+         }
+
 open Rules
 
 (* TODO On return the caller should check for return code and compute hash *)
