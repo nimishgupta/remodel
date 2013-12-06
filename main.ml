@@ -71,7 +71,7 @@ let process (r : Build.rt ) : unit =
 let build_parallel (coll_ch : int option Event.channel)
                    (wrkr_ch : Build.t option Event.channel)
                    (cres_ch : Build.rt list Event.channel)
-                   (vlst    : Vertex.t list) : bool =
+                   (vlst    : Vertex.t list) : unit =
   assert ([] <> vlst);
   let len = List.length vlst in
   (* 1. Signal collector *)
@@ -80,8 +80,7 @@ let build_parallel (coll_ch : int option Event.channel)
   (* 3.Collect results *)
   let rlst = Event.sync (Event.receive cres_ch) in
   assert ([] <> rlst);
-  (* 4. Process results *)
-  List.iter process rlst; true
+  List.iter process rlst
 
 
 let rec collector (coll_ch : int option Event.channel) 
@@ -118,6 +117,8 @@ let remodel (file : string) : unit =
   (* TODO : Give help in error message as to what is causing a cycle *)
   if DAG.has_cycle () then print_string "remodel: cyclic dependency detected"
   else 
+    (* XXX: Imperative code smell *)
+    DB.init ();
     let size  = if !njobs > 0 then !njobs else 10 (* TODO *) in
     let collector_ch    = Event.new_channel () in
     let worker_ch       = Event.new_channel () in
@@ -125,8 +126,7 @@ let remodel (file : string) : unit =
     let comb_results_ch = Event.new_channel () in
     let coll_tid  = List.hd (thread_pool (collector collector_ch results_ch) comb_results_ch 1) in
     let wrkr_tids = thread_pool (worker worker_ch) results_ch size in
-    (* DAG.ordered_build (DAG.imap ()) chan; *)
-    (* TODO : Send terminating signal*)
+    DAG.ordered_iter (build_parallel collector_ch worker_ch comb_results_ch);
     List.iter (fun _ -> Event.sync (Event.send worker_ch None)) wrkr_tids;
     Event.sync (Event.send collector_ch None);
     List.iter Thread.join wrkr_tids; Thread.join coll_tid

@@ -34,6 +34,9 @@ let rev_topo () : V.t list =
   let module T = Graph.Topological.Make (DAG) in
     T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) g []
 
+
+
+
 (* TODO : Cleanup *)
 
 (* TODO : Put in a "parallel" module that provides an iter or fold function *)
@@ -72,8 +75,5 @@ let (|>) v f = f v
 
 let imap () = rev_topo () |> happens_before |> happens_before'
 
-(*
-let ordered_build (imap : inverted_ts) (chan : 'a Event.channel) : unit =
-  let process _ vlst = List.iter (fun v -> Event.sync (Event.send chan v)) vlst
-  in ITSM.iter process imap
-*)
+let ordered_iter (f : V.t list -> unit) : unit =
+  ITSM.iter (fun _ v -> f v)  (imap ())
