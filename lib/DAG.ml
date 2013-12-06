@@ -24,6 +24,8 @@ let build_graph (rules : Rules.t) : unit =
   let action_of = Rules.rule_action rules in
   Rules.iter (process_rule action_of) rules
 
+let succ (v : V.t) : V.t list = G.succ g v
+
 
 (* TODO : Cleanup *)
 

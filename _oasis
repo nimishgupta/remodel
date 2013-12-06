@@ -32,10 +32,10 @@ Library core
     Lexer,
     Parser
   Modules:
+    Build,
     DAG,
     DB,
     DirtySet,
     Rules,
-    Vertex,
-    Worker
+    Vertex
   BuildTools: ocamlbuild

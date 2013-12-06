@@ -1,3 +1,6 @@
+
+
+(* Way too many boxing and unboxing parameters *)
 type t = {
            target : Rules.target;
            action : Rules.action;
@@ -6,10 +9,13 @@ type t = {
          }
 
 type rt = {
-            target : Rules.target;
-            action : Rules.action;
+            trgt : Rules.target;
+            actn : Rules.action;
             (* Are force and code being redundant over here *)
-            force  : bool;
+            frc  : bool;
             code   : int option;
-            digest : Digest.t option;
+            dgst : Digest.t option;
           }
+
+
+val build_wrap: t -> rt

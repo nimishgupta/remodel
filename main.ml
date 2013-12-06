@@ -42,9 +42,10 @@ let default = ["remodelfile"; "Remodelfile"]
 
 
 (* TODO : Make local *)
-let collector_ch = Event.new_channel
-let worker_ch    = Event.new_channel
-let results_ch   = Event.new_channel
+let collector_ch = Event.new_channel ()
+let worker_ch    = Event.new_channel ()
+let results_ch   = Event.new_channel ()
+let comb_results_ch = Event.new_channel ()
 
 let rec collector () : unit =
   match Event.sync (Event.receive collector_ch) with
@@ -53,7 +54,7 @@ let rec collector () : unit =
         let rec results n =
            if n = 0 then []
            else (Event.sync (Event.receive results_ch)) :: results (n - 1)
-        in Event.sync (Event.send collector_ch (results n));
+        in Event.sync (Event.send comb_results_ch (results n));
         collector ()
 
   
@@ -62,12 +63,12 @@ let rec worker () : unit =
   match Event.sync (Event.receive worker_ch) with
     | None -> () 
     | Some arg ->
-        let res = Worker.build_wrap arg in
+        let res = Build.build_wrap arg in
         Event.sync (Event.send results_ch res);
         worker ()
 
 
-let rec thread_pool (worker : 'a -> 'b) (arg : 'a) (n : int) : Threads.t list =
+let rec thread_pool (worker : 'a -> 'b) (arg : 'a) (n : int) : Thread.t list =
   if n = 0 then []
   else (Thread.create worker arg) :: thread_pool worker arg (n - 1)
 
@@ -76,18 +77,18 @@ let rec thread_pool (worker : 'a -> 'b) (arg : 'a) (n : int) : Threads.t list =
 (* Given a vertex, extract target and action, set a flag if target is in dirty list, gets its optional md5, wrap it up in a record and ship it for parallel execution *)
 let dispatch (v : Vertex.t) : unit =
   let open Rules in
-  let trgt = target_in v in
+  let trgt = Vertex.target_in v in
   let warg = { 
-               target = trgt;
-               action = action_in v;
-               force  = DirtySet.is_dirty v;
-               digest = if not (is_pseudo trgt) then DB.get (to_file v) else None;
+               Build.target = trgt;
+               Build.action = Vertex.action_in v;
+               Build.force  = DirtySet.is_dirty v;
+               Build.digest = if not (is_pseudo trgt) then DB.get (to_file trgt) else None;
              }
-  in Event.sync (Event.send (Some warg))
+  in Event.sync (Event.send worker_ch (Some warg))
 
-let process (r : Worker.rt ) : ?? =
-  let v = Vertex.to_vertex r.target r.action in
-  if force then let vlst = DAG.succ v in
+let process (r : Build.rt ) : unit =
+  let v = Vertex.to_vertex r.Build.trgt r.Build.actn in
+  if r.Build.frc then let vlst = DAG.succ v in
   begin
     List.iter DirtySet.mark vlst;
     (* Update digest *)
@@ -100,13 +101,13 @@ let build_parallel (vlst : Vertex.t list) : bool =
   assert ([] <> vlst);
   let len = List.length vlst in
   (* 1. Signal collector *)
-  Event.sync (Event.send collector_ch len);
+  Event.sync (Event.send collector_ch (Some len));
   List.iter dispatch vlst;
   (* 3.Collect results *)
-  let rlst = Event.sync (Event.receive results_ch) in
-  assert [] <> reslst;
+  let rlst = Event.sync (Event.receive comb_results_ch) in
+  assert ([] <> rlst);
   (* 4. Process results *)
-  List.iter process rlst
+  List.iter process rlst; true
 
   
   

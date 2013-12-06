@@ -67,9 +67,9 @@ let init () =
     | true, true  -> populate tbl path
         
 
-let write (path : string) (md5 :string) : unit = Hashtbl.replace tbl path md5
+let put (path : string) (md5 :string) : unit = Hashtbl.replace tbl path md5
 
-let read (path : string) : string option = 
+let get (path : string) : string option = 
   try Some (Hashtbl.find tbl path) with Not_found -> None
 
 
@@ -81,7 +81,7 @@ let move (src : string) (dst : string) : unit =
 
   
   
-let dump () = 
+let dump () : unit = 
   let path = Filename.concat dirname filename in
   try let tmp_path, ch = Filename.open_temp_file "index" "rmd" in
       Hashtbl.iter (fun file md5 -> output_string ch (file ^ (String.make 1 sep) ^ md5)) tbl;
