@@ -1,4 +1,18 @@
 (* TODO *)
+
+(* Command line arguments *)
+(*
+let njobs: int ref = ref 0
+let rmdfile: string option ref = ref None
+let demo: bool = ref false
+let help: bool = ref false
+let debug: bool = ref false
+let help: bool = ref false
+let silent: bool = ref false
+*)
+
+
+
 (* Command line switches 
     - -j for controlling parallelism
     - -f for fixed filename
@@ -6,6 +20,12 @@
     - -h/--help for help
     - -d for extra debugging
     - -s for silent mode (no printing of action)
+*)
+
+(*
+let specs =
+[
+ ("-j", Arg.Int set_njobs, 
 *)
 
 

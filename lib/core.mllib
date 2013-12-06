@@ -1,10 +1,11 @@
 # OASIS_START
-# DO NOT EDIT (digest: 1aaadcdafba6ae86c83319ebab19dd0b)
+# DO NOT EDIT (digest: cc75f3aec664e61859afb066c995d342)
 DAG
 DB
 DirtySet
 Rules
 Vertex
+Worker
 Lexer
 Parser
 # OASIS_STOP

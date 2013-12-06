@@ -64,10 +64,9 @@ let init () =
     | true, true  -> populate tbl path
         
 
-(* TODO : Should be string based instead of directly accessing md5, leave md5 to clients of this module *)
-let touch (path : string) : unit = Hashtbl.replace tbl path (Digest.file path)
+let write (path : string) (md5 :string) : unit = Hashtbl.replace tbl path md5
 
-let get_file_sig (path : string) : string = Hashtbl.find tbl path
+let read (path : string) : string = Hashtbl.find tbl path
 
 
 let move (src : string) (dst : string) : unit =

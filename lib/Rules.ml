@@ -16,9 +16,9 @@ let to_deps (flst : file list) : deps = flst
 
 let to_action (action : string option) : action = action
 
-let exec_action (action : action) : int = match action with
-  | Some a -> Sys.command a
-  | None -> 0
+let exec_action (action : action) : int option = match action with
+  | Some a -> Some (Sys.command a)
+  | None -> None
 
 
 module Rules = Map.Make (struct
@@ -57,3 +57,13 @@ let fold f rules acc =
 (* XXX : to_target is more elegant *)
 let deps_to_targets deps =
   List.map (fun f -> File f) deps
+
+
+let is_pseudo (trgt : target) : bool = match trgt with
+  | File _  -> false
+  | Default -> true
+
+(* XXX : Should it raise an exception or return an option *)
+let to_file (trgt : target) : string = match trgt with
+  | File f  -> f
+  | Default -> invalid_arg "remodel: Not a file"

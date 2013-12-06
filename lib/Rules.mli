@@ -9,7 +9,7 @@ val to_deps: string list -> deps
 val to_action: string option -> action
 
 (* XXX: Can be to_cmd *)
-val exec_action: action -> int
+val exec_action: action -> int option
 
 val to_rules: (target * deps * action) list -> t
 
@@ -21,4 +21,6 @@ val fold: (target -> deps -> action -> 'a -> 'a) -> t -> 'a -> 'a
 
 val deps_to_targets: deps -> target list
 
+val is_pseudo: target -> bool
 
+val to_file: target -> string

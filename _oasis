@@ -36,5 +36,6 @@ Library core
     DB,
     DirtySet,
     Rules,
-    Vertex
+    Vertex,
+    Worker
   BuildTools: ocamlbuild

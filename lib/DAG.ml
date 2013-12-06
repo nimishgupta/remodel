@@ -10,12 +10,11 @@ let g = G.create ()
 let process_rule (action_of : Rules.target -> Rules.action) 
                  (trgt : Rules.target) 
                  (deps : Rules.deps)
-                 (actn : Rules.action)
-                 : unit =
+                 (actn : Rules.action) : unit =
   let open Vertex in
   let open Rules  in
   let open List   in
-  let sink   = to_vertex trgt actn in
+  let sink = to_vertex trgt actn in
   let srcs = map (fun t -> to_vertex t (action_of t)) (deps_to_targets deps) in
   iter (fun src -> G.add_edge g src sink) srcs
   
@@ -66,21 +65,6 @@ type inverted_ts = V.t list ITSM.t
 let happens_before' (m : logical_ts) : inverted_ts =
   TSM.fold (fun (v : V.t) (ts : int) (m' : inverted_ts) ->
               ITSM.add ts (v :: (try ITSM.find ts m' with Not_found -> [])) m') m ITSM.empty
-
-
-(*
-(* TODO : make it mature *)
-let rec worker (chan : 'a Event.channel) = 
-  let node = Event.sync (Event.receive chan) in
-  ignore (match node.V.action with
-    | Some a -> (* Sys.command a *) print_string a; print_newline (); 0
-    | None -> 0); worker chan
-    
-
-(* TODO : Handle creation errors *)
-let rec thread_pool (n : int) (chan : 'a Event.channel) : unit =
-  if n > 0 then begin ignore (Thread.create worker chan); thread_pool (n - 1) chan end
-*)
 
 
 let (|>) v f = f v
