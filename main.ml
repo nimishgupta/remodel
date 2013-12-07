@@ -1,38 +1,38 @@
-(* TODO *)
+let usage_msg = "remodel is a build tool.\n" ^
+                "Usage: remodel [options] [target] ...\n" ^
+                "Options:"
 
-(* Command line arguments *)
-let njobs = ref 0
+(* Command line switches 
+    -j for controlling parallelism
+    -f for fixed filename
+    -n for only printing info
+    -d for extra debugging
+    -s for silent mode (no printing of action)
+*)
+
+let njobs      = ref 0
+let rmdfile    = ref None
+let demo       = ref false
+let spl_target = ref None
 (*
-let rmdfile: string option ref = ref None
-let demo: bool = ref false
-let help: bool = ref false
 let debug: bool = ref false
-let help: bool = ref false
 let silent: bool = ref false
 *)
 
 
+let set_njobs (j : int) : unit =
+  if j >= 0 then njobs := j
+  else raise (Arg.Bad ("Invalid argument " ^ (string_of_int j) ^ " for j"))
 
-(* Command line switches 
-    - -j for controlling parallelism
-    - -f for fixed filename
-    - -n for only printing info
-    - -h/--help for help
-    - -d for extra debugging
-    - -s for silent mode (no printing of action)
-*)
+let special_target (t : string) : unit = spl_target := Some t
 
-(*
-let specs =
+let spec =
 [
- ("-j", Arg.Int set_njobs, 
-*)
+ ("-j", Arg.Int set_njobs, "Number of jobs to execute in parallel.");
+ ("-f", Arg.String (fun s -> rmdfile := Some s), "Use a file other than default (\"remodelfile\" | \"Remodelfile\").");
+ ("-n", Arg.Set demo, "Don't run commands. Prints commands that shall be run.");
+]
 
-
-(* TODO : if a filename is specified on command line then change process root as per the directory *)
-
-
-(* TODO : Use at_exit to dump file *)
 
 let default = ["remodelfile"; "Remodelfile"]
 
@@ -40,10 +40,6 @@ let default = ["remodelfile"; "Remodelfile"]
 (* TODO *)
 (* let error str code = print_string str; print_newline (); *)
 
-
-
-
-  
 (* TODO : Reconsider dispatch and process code in wake that target abstraction and vertex abstraction are completely falling apart *)
 (* Given a vertex, extract target and action, set a flag if target is in dirty list, gets its optional md5, wrap it up in a record and ship it for parallel execution *)
 let dispatch (wrkr_ch : Build.t option Event.channel) (v : Vertex.t) : unit =
@@ -110,15 +106,22 @@ let rec thread_pool (worker : 'a -> 'b) (arg : 'a) (n : int) : Thread.t list =
   else (Thread.create worker arg) :: thread_pool worker arg (n - 1)
 
  
-let remodel (file : string) : unit = 
+(* TODO : Make use of target *)
+let remodel (file : string) (target : Rules.target): unit = 
   let cin = open_in file in
   let rules = Parser.program Lexer.token (Lexing.from_channel cin) in
   DAG.build_graph rules;
   (* TODO : Give help in error message as to what is causing a cycle *)
-  if DAG.has_cycle () then print_string "remodel: cyclic dependency detected"
+  if DAG.has_cycle () then 
+    begin
+      print_string "remodel: cyclic dependency detected";
+      exit 1
+    end
   else 
     (* XXX: Imperative code smell *)
     DB.init ();
+    at_exit DB.dump;
+
     let size  = if !njobs > 0 then !njobs else 10 (* TODO *) in
     let collector_ch    = Event.new_channel () in
     let worker_ch       = Event.new_channel () in
@@ -131,7 +134,15 @@ let remodel (file : string) : unit =
     Event.sync (Event.send collector_ch None);
     List.iter Thread.join wrkr_tids; Thread.join coll_tid
 
+(* TODO : if a filename is specified on command line then change process root as per the directory *)
+let main =
+    Arg.parse spec special_target usage_msg;
+    let candidate_files = (match !rmdfile with | None -> default | Some f -> [f]) in
+    let target = (match !spl_target with | None -> Rules.to_target "DEFAULT" | Some t -> Rules.to_target t) in
+    try 
+      let file = List.find Sys.file_exists candidate_files in
+      remodel file target
+    with Not_found -> print_string "remodel: Invalid input file\n"   
 
-let () = 
-  try let file = List.find Sys.file_exists default in remodel file
-  with Not_found -> print_string "remodel: Invalid input file\n"
+
+let () =  main
