@@ -5,6 +5,7 @@ module V = Vertex
 
 module DAG = Imperative.Digraph.Concrete (V)
 
+(* TODO : Make g local *)
 let g = DAG.create ()
 
 let process_rule (action_of : Rules.target -> Rules.action) 
@@ -19,15 +20,53 @@ let process_rule (action_of : Rules.target -> Rules.action)
   iter (fun src -> DAG.add_edge g src sink) srcs
   
 
-(* TODO : Add arbitrary target support *)
-let build_graph (rules : Rules.t) : unit =
-  let action_of = Rules.rule_action rules in
-  Rules.iter (process_rule action_of) rules
-
-let succ (v : V.t) : V.t list = DAG.succ g v
 
 let has_cycle () : bool =
   let module DFS = Graph.Traverse.Dfs (DAG) in DFS.has_cycle g
+
+
+module TargetSet = Hashtbl.Make (struct
+  type t = Rules.target
+  let hash = Hashtbl.hash
+  let equal = (=)
+end)
+
+let seen = TargetSet.create 100
+
+(* Pre condition that is satisfied is that there cannot be duplicate targets *)
+(* Invariant: If target is not psedo then either it should have a rule to build it
+ *            or its correspoding file should exist
+ * process_rules for target
+ * List.iter to_deps and call the same function
+ *)
+
+(* TODO : Can be made tail recursive using state *)
+let rec _build_graph (rules : Rules.t)
+                     (target : Rules.target) : unit =
+  let open Rules in
+  let action_of = Rules.rule_action rules in
+  let target_str = to_target_string target in
+  if TargetSet.mem seen target 
+  then Log.error ("Cycle detected in graph: \""^target_str^"\"") 1
+  else
+    let deps, actn = (try Rules.find target rules
+                      with Not_found -> 
+                             (if (is_pseudo target) || not (Sys.file_exists (to_file target))
+                              then Log.error ("No rule to make target "^target_str^"\"") 1);
+                             Rules.to_deps [], Rules.to_action None)
+    in process_rule action_of target deps actn;
+       TargetSet.add seen target 0;
+       List.iter (_build_graph rules) (deps_to_targets deps)
+  
+
+(* Detect cycle using a seen set *)
+let build_graph (rules : Rules.t) (target : Rules.target): unit =
+  _build_graph rules target;
+  assert (not (has_cycle ()));
+  TargetSet.clear seen
+      
+let succ (v : V.t) : V.t list = DAG.succ g v
+
 
 (* topological sort *)
 let rev_topo () : V.t list = 
@@ -35,11 +74,7 @@ let rev_topo () : V.t list =
     T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) g []
 
 
-
-
 (* TODO : Cleanup *)
-
-(* TODO : Put in a "parallel" module that provides an iter or fold function *)
 module TSM = Map.Make (struct
   type t = V.t
   let compare = V.compare

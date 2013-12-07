@@ -34,9 +34,7 @@ let spec =
 
 let default = ["remodelfile"; "Remodelfile"]
 
-let error (str : string) (code : int) : 'a  = print_endline ("remodel: " ^ str); exit code
-let log (str : string) : unit = print_endline ("remodel: " ^ str)
-
+(* TODO : All threading stuff should be moved to Parallel module *)
 (* TODO : Reconsider dispatch and process code in wake that target abstraction
           and vertex abstraction are completely falling apart *)
 let dispatch (wrkr_ch : Build.t option Event.channel) (v : Vertex.t) : unit =
@@ -128,36 +126,39 @@ let rec thread_pool (worker : 'a -> 'b) (arg : 'a) (n : int) : Thread.t list =
 let remodel (file : string) (target : Rules.target): unit = 
   let cin = open_in file in
   let rules = Parser.program Lexer.token (Lexing.from_channel cin) in
-  DAG.build_graph rules;
-  (* TODO : Give help in error message as to what is causing a cycle *)
-  if DAG.has_cycle () then ignore (error "cyclic dependency detected" 1)
-  else 
-    (try DB.init () (* XXX : imperative *)
-     with DB.Db_error str -> ignore (error "Error initializing remodel index" 1));
-    at_exit DB.dump;
-    let size  = if !njobs > 0 then !njobs else 10 (* TODO *) in
-    let collector_ch    = Event.new_channel () in
-    let worker_ch       = Event.new_channel () in
-    let results_ch      = Event.new_channel () in
-    let comb_results_ch = Event.new_channel () in
-    let coll_tid  = List.hd (thread_pool (collector collector_ch results_ch) comb_results_ch 1) in
-    let wrkr_tids = thread_pool (worker worker_ch) results_ch size in
-    DAG.ordered_iter (build_parallel collector_ch worker_ch comb_results_ch);
-    List.iter (fun _ -> Event.sync (Event.send worker_ch None)) wrkr_tids;
-    Event.sync (Event.send collector_ch None);
-    List.iter Thread.join wrkr_tids; Thread.join coll_tid
+  DAG.build_graph rules target;
+  (try DB.init ()
+   with DB.Db_error str -> Log.error "Error initializing remodel index" 1);
+  at_exit DB.dump;
+  let size  = if !njobs > 0 then !njobs else 10 (* TODO *) in
+  let collector_ch    = Event.new_channel () in
+  let worker_ch       = Event.new_channel () in
+  let results_ch      = Event.new_channel () in
+  let comb_results_ch = Event.new_channel () in
+  let coll_tid  = List.hd (thread_pool (collector collector_ch results_ch) comb_results_ch 1) in
+  let wrkr_tids = thread_pool (worker worker_ch) results_ch size in
+  DAG.ordered_iter (build_parallel collector_ch worker_ch comb_results_ch);
+  List.iter (fun _ -> Event.sync (Event.send worker_ch None)) wrkr_tids;
+  Event.sync (Event.send collector_ch None);
+  List.iter Thread.join wrkr_tids; Thread.join coll_tid
 
 
 
 (* TODO : if a filename is specified on command line then change process root as per the directory *)
 let main =
     Arg.parse spec special_target usage_msg;
-    let candidate_files = (match !rmdfile with | None -> default | Some f -> [f]) in
-    let target = (match !spl_target with | None -> Rules.to_target "DEFAULT" | Some t -> Rules.to_target t) in
+
+    let candidate_files = (match !rmdfile with 
+      | None -> default 
+      | Some f -> [f]) in
+
+    let target = (match !spl_target with 
+      | None -> Rules.to_target "DEFAULT" 
+      | Some t -> Rules.to_target t) in
+
     try 
       let file = List.find Sys.file_exists candidate_files in
-      log ("using file: " ^ file); remodel file target
-    with Not_found -> print_string "remodel: Invalid input file\n"   
-
+      remodel file target
+    with Not_found -> Log.error "Invalid input file" 1
 
 let () =  main

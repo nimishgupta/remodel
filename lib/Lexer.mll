@@ -2,7 +2,7 @@
   open Parser
 
   let trim_quotes (s : string) : string =
-    String.sub (String.trim s) 1 ((String.length s) - 2)
+    String.trim (String.sub (String.trim s) 1 ((String.length s) - 2))
 }
 
 let blank   = [ ' ' '\t' ]

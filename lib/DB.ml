@@ -11,8 +11,6 @@
  *)
 
 
-(* TODO : Model as key value store *)
-
 exception Db_error of string
 
 

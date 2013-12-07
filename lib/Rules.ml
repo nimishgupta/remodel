@@ -33,7 +33,7 @@ type rule = target * deps * action
 let process (rules : t) ((tgt, deps, actn) : rule) : t =
   if Rules.mem tgt rules then 
     begin 
-      print_string ("remodel: Warning, duplicate rule, overriding\n");
+      Log.warning "duplicate rule found, overriding";
       Rules.add tgt (deps, actn) rules
     end
   else Rules.add tgt (deps, actn) rules
@@ -54,10 +54,8 @@ let iter f rules =
 let fold f rules acc =
   let f' trgt (deps, actn) acc' = f trgt deps actn acc' in Rules.fold f' rules acc
 
-(* XXX : to_target is more elegant *)
 let deps_to_targets deps =
   List.map (fun f -> File f) deps
-
 
 let is_pseudo (trgt : target) : bool = match trgt with
   | File _  -> false
@@ -68,6 +66,12 @@ let to_file (trgt : target) : string = match trgt with
   | File f  -> f
   | Default -> invalid_arg "remodel: Not a file"
 
+let to_target_string (trgt : target) : string = match trgt with
+  | File f  -> f
+  | Default -> "DEFAULT"
+
 let to_string (actn: action) : string = match actn with
   | Some a -> a
   | None -> "<empty>"
+
+let find = Rules.find
