@@ -51,38 +51,28 @@ let dispatch (wrkr_ch : Build.t option Event.channel) (v : Vertex.t) : unit =
 let mark_succ_dirty (v : Vertex.t) : unit =
   List.iter (fun v' -> DirtySet.mark v') (DAG.succ v)
   
-let process_res (r : Build.rt) (acc : bool): bool =
+let process_res (r : Build.t): unit =
   let open Vertex in
   let open DirtySet in
   let open DB in
   let open Rules in
-  let v = to_vertex r.Build.trgt r.Build.actn in
-  acc && (match is_pseudo r.Build.trgt, r.Build.frc, r.Build.code, r.Build.dgst with
-    | true, true, Some c,  _ -> 
-        if c = 0 
-        then begin cleanse v; true end
-        else false
+  let v = to_vertex r.Build.target r.Build.action in
+  (match is_pseudo r.Build.target, r.Build.force, r.Build.digest with
+     | true, _, _    -> cleanse v
 
-    | true, _, _, _          -> cleanse v; true
+     | false, true, Some d ->
+         mark_succ_dirty v;
+         cleanse v;
+         put (to_file r.Build.target) d;
 
-    | false, true, Some c, Some d when c <> 0 -> false
+     | false, false, Some d -> ()
 
-    (* Below pattern relies on above pattern for c <> 0 *)
-    | false, true, None, Some d
-    | false, true, Some _, Some d ->
-        mark_succ_dirty v;
-        cleanse v;
-        put (to_file r.Build.trgt) d;
-        true
-
-    | false, false, None, Some d -> true
-
-    | _, _, _, _ -> assert false)
+     | _, _, _ -> assert false)
 
 
 let build_parallel (coll_ch : int option Event.channel)
                    (wrkr_ch : Build.t option Event.channel)
-                   (cres_ch : Build.rt list Event.channel)
+                   (cres_ch : Build.t list Event.channel)
                    (vlst    : Vertex.t list) : unit =
   assert ([] <> vlst);
   let len = List.length vlst in
@@ -90,13 +80,12 @@ let build_parallel (coll_ch : int option Event.channel)
   List.iter (dispatch wrkr_ch) vlst;
   let rlst = Event.sync (Event.receive cres_ch) in
   assert ([] <> rlst);
-  (* TODO : Remove ignore and process errors if any *)
-  ignore (List.fold_right process_res rlst true)
+  List.iter process_res rlst
 
 
 let rec collector (coll_ch : int option Event.channel) 
-                  (res_ch  : Build.rt Event.channel) 
-                  (cres_ch : Build.rt list Event.channel) : unit =
+                  (res_ch  : Build.t Event.channel) 
+                  (cres_ch : Build.t list Event.channel) : unit =
   match Event.sync (Event.receive coll_ch) with
     | None -> ()
     | Some n ->
@@ -108,14 +97,15 @@ let rec collector (coll_ch : int option Event.channel)
 
 
 let rec worker (wrkr_ch : Build.t option Event.channel) 
-               (res_ch  : Build.rt Event.channel) : unit =
+               (res_ch  : Build.t Event.channel) : unit =
   match Event.sync (Event.receive wrkr_ch) with
     | None -> () 
     | Some arg ->
-        (* TODO : put exception handling code *)
-        let res = Build.build arg in
-        Event.sync (Event.send res_ch res);
-        worker wrkr_ch res_ch
+        try
+          let res = Build.build arg in
+          Event.sync (Event.send res_ch res);
+          worker wrkr_ch res_ch
+        with Build.Build_error str -> Log.error str 1
 
 let rec thread_pool (worker : 'a -> 'b) (arg : 'a) (n : int) : Thread.t list =
   if n = 0 then []

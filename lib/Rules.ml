@@ -70,8 +70,8 @@ let to_target_string (trgt : target) : string = match trgt with
   | File f  -> f
   | Default -> "DEFAULT"
 
-let to_string (actn: action) : string = match actn with
-  | Some a -> a
-  | None -> "<empty>"
-
 let find = Rules.find
+
+let print_action (actn : action) : unit = match actn with
+  | Some a -> Log.out a
+  | None -> ()

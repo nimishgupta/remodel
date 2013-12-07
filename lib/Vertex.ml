@@ -13,4 +13,3 @@ let to_vertex (trgt: Rules.target) (actn : Rules.action) : t =
 
 let target_in (v : t) : Rules.target = v.target
 let action_in (v : t) : Rules.action = v.action
-

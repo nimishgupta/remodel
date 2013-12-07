@@ -1,28 +1,12 @@
+exception Build_error of string
+
+
 type t = {
            target : Rules.target;
            action : Rules.action;
            force  : bool;
            digest : Digest.t option;
          }
-
-type rt = {
-            trgt : Rules.target;
-            actn : Rules.action;
-            frc  : bool;
-            code : int option;
-            dgst : Digest.t option;
-          }
-
-let to_rt (t : Rules.target) (a : Rules.action) (f : bool) (c : int option) (d : Digest.t option) : rt =
-  {
-    trgt = t;
-    actn = a;
-    frc  = f;
-    code = c;
-    dgst = d;
-  }
-
-
 
 let to_t (t : Rules.target) (a : Rules.action) (f : bool) (d : Digest.t option) : t =
   {
@@ -40,15 +24,23 @@ let to_t (t : Rules.target) (a : Rules.action) (f : bool) (d : Digest.t option) 
     - if digest do not match then we surely build it unconditionally
 *)
 
+
+let exec (action : Rules.action) (file : string) : unit =
+  Rules.print_action action;
+  (match Rules.exec_action action with
+     | Some c when c <> 0 -> raise (Build_error ("Failed to build target " ^ file))
+     | _ -> ())
+
+
 let build_file (file : string)
                (actn : Rules.action)
                (force : bool)
-               (digest : Digest.t option) : (bool * int option) =
+               (digest : Digest.t option) : bool =
   let open Rules in
   let exists = Sys.file_exists file in
   if force || not exists || digest <> (Some (Digest.to_hex (Digest.file file)))
-  then begin print_endline (Rules.to_string actn); true, Rules.exec_action actn end
-  else false, None
+  then begin exec actn file; true end
+  else false
 
 
 (* Check if target is pseudo target,
@@ -63,21 +55,22 @@ let build_file (file : string)
 let build_target (trgt   : Rules.target) 
                  (actn   : Rules.action)
                  (force  : bool)
-                 (digest : Digest.t option) : rt = 
+                 (digest : Digest.t option) : t = 
   let open Rules in
-  let frc', code', digest' = (match is_pseudo trgt, force with
-    | true,  true  -> true,  exec_action actn, None
-    | true,  false -> false, None, None
+  let trgt_str = to_target_string trgt in
+  let frc', digest' = (match is_pseudo trgt, force with
+    | true,  true  -> true, (exec actn trgt_str; None)
+    | true,  false -> false, None
     | false, _     -> 
         let file = to_file trgt in
-        let force', code = build_file file actn force digest in
-        if not (Sys.file_exists file) then failwith "remodel: Failed to build target\n"
+        let force' = build_file file actn force digest in
+        if not (Sys.file_exists file) then raise (Build_error ("Failed to build target "^trgt_str))
         else if force' 
              then let digest' = Some (Digest.to_hex (Digest.file file)) 
-             in force', code, digest'
-        else force', code, digest)
-  in to_rt trgt actn frc' code' digest'
+             in force', digest'
+        else force', digest)
+  in to_t trgt actn frc' digest'
 
 (* XXX : provide a dummy to support -n *)
-let build (v : t) : rt =
+let build (v : t) : t =
   build_target v.target v.action v.force v.digest

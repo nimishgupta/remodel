@@ -6,3 +6,6 @@ let warning (str: string) : unit =
 
 let info (str : string) : unit = 
   print_endline ("remodel: " ^ str)
+
+let out (str : string) : unit =
+  print_endline str

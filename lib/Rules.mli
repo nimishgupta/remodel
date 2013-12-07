@@ -27,6 +27,6 @@ val is_pseudo: target -> bool
 
 val to_file: target -> string
 
-val to_string: action -> string
+val print_action: action -> unit
 
 val to_target_string: target -> string
