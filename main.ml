@@ -18,10 +18,9 @@ let debug: bool = ref false
 let silent: bool = ref false
 *)
 
-
 let set_njobs (j : int) : unit =
   if j >= 0 then njobs := j
-  else raise (Arg.Bad ("Invalid argument " ^ (string_of_int j) ^ " for j"))
+  else raise (Arg.Bad ("Invalid argument " ^ (string_of_int j)))
 
 let special_target (t : string) : unit = spl_target := Some t
 
@@ -35,9 +34,8 @@ let spec =
 
 let default = ["remodelfile"; "Remodelfile"]
 
-
-(* TODO *)
-(* let error str code = print_string str; print_newline (); *)
+let error (str : string) (code : int) : 'a  = print_endline ("remodel: " ^ str); exit code
+let log (str : string) : unit = print_endline ("remodel: " ^ str)
 
 (* TODO : Reconsider dispatch and process code in wake that target abstraction
           and vertex abstraction are completely falling apart *)
@@ -51,12 +49,6 @@ let dispatch (wrkr_ch : Build.t option Event.channel) (v : Vertex.t) : unit =
   in Event.sync (Event.send wrkr_ch (Some warg))
 
 
-
-(* Check if pseudo target and was forced
-   then Check for code, if code exists then if not 0 then error
-
-   if not pseudo and force is set then check for code 
-*)
 
 let mark_succ_dirty (v : Vertex.t) : unit =
   List.iter (fun v -> DirtySet.mark v) (DAG.succ v)
@@ -96,10 +88,8 @@ let build_parallel (coll_ch : int option Event.channel)
                    (vlst    : Vertex.t list) : unit =
   assert ([] <> vlst);
   let len = List.length vlst in
-  (* 1. Signal collector *)
   Event.sync (Event.send coll_ch (Some len));
   List.iter (dispatch wrkr_ch) vlst;
-  (* 3.Collect results *)
   let rlst = Event.sync (Event.receive cres_ch) in
   assert ([] <> rlst);
   (* TODO : Remove ignore and process errors if any *)
@@ -124,6 +114,7 @@ let rec worker (wrkr_ch : Build.t option Event.channel)
   match Event.sync (Event.receive wrkr_ch) with
     | None -> () 
     | Some arg ->
+        (* TODO : put exception handling code *)
         let res = Build.build arg in
         Event.sync (Event.send res_ch res);
         worker wrkr_ch res_ch
@@ -139,16 +130,11 @@ let remodel (file : string) (target : Rules.target): unit =
   let rules = Parser.program Lexer.token (Lexing.from_channel cin) in
   DAG.build_graph rules;
   (* TODO : Give help in error message as to what is causing a cycle *)
-  if DAG.has_cycle () then 
-    begin
-      print_string "remodel: cyclic dependency detected";
-      exit 1
-    end
+  if DAG.has_cycle () then ignore (error "cyclic dependency detected" 1)
   else 
-    (* XXX: Imperative code smell *)
-    DB.init ();
+    (try DB.init () (* XXX : imperative *)
+     with DB.Db_error str -> ignore (error "Error initializing remodel index" 1));
     at_exit DB.dump;
-
     let size  = if !njobs > 0 then !njobs else 10 (* TODO *) in
     let collector_ch    = Event.new_channel () in
     let worker_ch       = Event.new_channel () in
@@ -161,6 +147,8 @@ let remodel (file : string) (target : Rules.target): unit =
     Event.sync (Event.send collector_ch None);
     List.iter Thread.join wrkr_tids; Thread.join coll_tid
 
+
+
 (* TODO : if a filename is specified on command line then change process root as per the directory *)
 let main =
     Arg.parse spec special_target usage_msg;
@@ -168,7 +156,7 @@ let main =
     let target = (match !spl_target with | None -> Rules.to_target "DEFAULT" | Some t -> Rules.to_target t) in
     try 
       let file = List.find Sys.file_exists candidate_files in
-      remodel file target
+      log ("using file: " ^ file); remodel file target
     with Not_found -> print_string "remodel: Invalid input file\n"   
 
 

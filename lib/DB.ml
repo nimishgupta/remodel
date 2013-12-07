@@ -47,20 +47,22 @@ let rec split (str : string) (sep : Char.t) : string list =
 let populate tbl path = 
   let chan = try Some (open_in path) with _ -> None in match chan with
     | None -> raise (Db_error ("Error opening file: " ^ path))
-    | Some ch -> let rec process () = 
-        try let line = input_line ch   in
-            let parts = split line sep in
-            if List.length parts <> 2 then raise (Db_error "File parse error")
-            else let file = List.nth parts 0 in
-                 let hash = List.nth parts 1 in
-                 Hashtbl.add tbl file hash; process ()
-        with End_of_file -> close_in ch in process ()
+    | Some ch ->
+        let rec process () = 
+          try let line = input_line ch   in
+              let parts = split line sep in
+              if List.length parts <> 2 then raise (Db_error "File parse error")
+              else let file = List.nth parts 0 in
+                   let hash = List.nth parts 1 in
+                   Hashtbl.add tbl file hash; process ()
+          with End_of_file -> close_in ch
+        in process ()
   
 
 let init () = 
   let path = Filename.concat dirname filename in
   let dir_exists  = Sys.file_exists dirname in
-  let file_exists = Sys.file_exists filename in
+  let file_exists = Sys.file_exists path in
   match dir_exists, file_exists with
     | false, _    -> create_dir dirname; create_file path
     | true, false -> create_file path
@@ -74,18 +76,13 @@ let get (path : string) : string option =
 
 
 let move (src : string) (dst : string) : unit =
-   if Sys.file_exists dst then Sys.rename dst (dst ^ ".org");
-   Sys.rename src dst;
-   Sys.remove src;
-   if Sys.file_exists (dst ^ ".orig") then Sys.remove (dst ^ ".org")
+  if 0 <> Sys.command ("mv " ^ src ^ " " ^ dst) then raise (Failure "move")
 
   
   
 let dump () : unit = 
   let path = Filename.concat dirname filename in
   try let tmp_path, ch = Filename.open_temp_file "index" "rmd" in
-      Hashtbl.iter (fun file md5 -> output_string ch (file ^ (String.make 1 sep) ^ md5)) tbl;
+      Hashtbl.iter (fun file md5 -> output_string ch (file ^ (String.make 1 sep) ^ md5 ^ "\n")) tbl;
       close_out ch; move tmp_path path
   with _ -> raise (Db_error "Error dumping file")
-  
-  

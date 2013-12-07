@@ -24,3 +24,5 @@ val deps_to_targets: deps -> target list
 val is_pseudo: target -> bool
 
 val to_file: target -> string
+
+val to_string: action -> string

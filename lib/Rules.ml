@@ -67,3 +67,7 @@ let is_pseudo (trgt : target) : bool = match trgt with
 let to_file (trgt : target) : string = match trgt with
   | File f  -> f
   | Default -> invalid_arg "remodel: Not a file"
+
+let to_string (actn: action) : string = match actn with
+  | Some a -> a
+  | None -> "<empty>"

@@ -1,5 +1,8 @@
 {
   open Parser
+
+  let trim_quotes (s : string) : string =
+    String.sub (String.trim s) 1 ((String.length s) - 2)
 }
 
 let blank   = [ ' ' '\t' ]
@@ -16,5 +19,5 @@ rule token = parse
   | file as f   { FILE (String.trim f)                 }
 
 and action = parse
-  | [^ '\n']+ as a { ACTION (String.trim a); }
+  | [^ '\n']+ as a { ACTION (trim_quotes (String.trim a)) }
   | '\n'           { Lexing.new_line lexbuf; token lexbuf }
