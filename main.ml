@@ -1,5 +1,4 @@
-let usage_msg = "remodel is a build tool.\n" ^
-                "Usage: remodel [options] [target] ...\n" ^
+let usage_msg = "Usage: remodel [options] [target] ...\n" ^
                 "Options:"
 
 (* Command line switches 
@@ -28,7 +27,7 @@ let special_target (t : string) : unit = spl_target := Some t
 
 let spec =
 [
- ("-j", Arg.Int set_njobs, "Number of jobs to execute in parallel.");
+ ("-j", Arg.Int set_njobs, "Number of jobs to execute in parallel. All actions are run in parallel by default");
  ("-f", Arg.String (fun s -> rmdfile := Some s), "Use a file other than default (\"remodelfile\" | \"Remodelfile\").");
  ("-n", Arg.Set demo, "Don't run commands. Prints commands that shall be run.");
 ]
@@ -40,28 +39,55 @@ let default = ["remodelfile"; "Remodelfile"]
 (* TODO *)
 (* let error str code = print_string str; print_newline (); *)
 
-(* TODO : Reconsider dispatch and process code in wake that target abstraction and vertex abstraction are completely falling apart *)
-(* Given a vertex, extract target and action, set a flag if target is in dirty list, gets its optional md5, wrap it up in a record and ship it for parallel execution *)
+(* TODO : Reconsider dispatch and process code in wake that target abstraction
+          and vertex abstraction are completely falling apart *)
 let dispatch (wrkr_ch : Build.t option Event.channel) (v : Vertex.t) : unit =
   let open Rules in
   let trgt = Vertex.target_in v in
-  let warg = { 
-               Build.target = trgt;
-               Build.action = Vertex.action_in v;
-               Build.force  = DirtySet.is_dirty v;
-               Build.digest = if not (is_pseudo trgt) then DB.get (to_file trgt) else None;
-             }
+  let actn = Vertex.action_in v in
+  let is_dirty = DirtySet.is_dirty v in
+  let dgst = (if not (is_pseudo trgt) then DB.get (to_file trgt) else None) in
+  let warg = Build.to_t trgt actn is_dirty dgst
   in Event.sync (Event.send wrkr_ch (Some warg))
 
-let process (r : Build.rt ) : unit =
-  let v = Vertex.to_vertex r.Build.trgt r.Build.actn in
-  if r.Build.frc then let vlst = DAG.succ v in
-  begin
-    List.iter DirtySet.mark vlst;
-    (* Update digest *)
-  end   (* cleanse *);
-  DirtySet.cleanse v
 
+
+(* Check if pseudo target and was forced
+   then Check for code, if code exists then if not 0 then error
+
+   if not pseudo and force is set then check for code 
+*)
+
+let mark_succ_dirty (v : Vertex.t) : unit =
+  List.iter (fun v -> DirtySet.mark v) (DAG.succ v)
+  
+let process_res (r : Build.rt) (acc : bool): bool =
+  let open Vertex in
+  let open DirtySet in
+  let open DB in
+  let open Rules in
+  let v = to_vertex r.Build.trgt r.Build.actn in
+  acc && (match is_pseudo r.Build.trgt, r.Build.frc, r.Build.code, r.Build.dgst with
+    | true, true, Some c,  _ -> 
+        if c = 0 
+        then begin cleanse v; true end
+        else false
+
+    | true, _, _, _          -> cleanse v; true
+
+    | false, true, Some c, Some d ->
+        if c = 0 then
+          begin
+            mark_succ_dirty v;
+            cleanse v;
+            put (to_file r.Build.trgt) d;
+            true
+          end
+        else false
+
+    | false, _, None,   Some d -> cleanse v; put (to_file r.Build.trgt) d; true
+
+    | _, _, _, _ -> assert false)
 
 
 let build_parallel (coll_ch : int option Event.channel)
@@ -76,7 +102,8 @@ let build_parallel (coll_ch : int option Event.channel)
   (* 3.Collect results *)
   let rlst = Event.sync (Event.receive cres_ch) in
   assert ([] <> rlst);
-  List.iter process rlst
+  (* TODO : Remove ignore and process errors if any *)
+  ignore (List.fold_right process_res rlst true)
 
 
 let rec collector (coll_ch : int option Event.channel) 
@@ -97,7 +124,7 @@ let rec worker (wrkr_ch : Build.t option Event.channel)
   match Event.sync (Event.receive wrkr_ch) with
     | None -> () 
     | Some arg ->
-        let res = Build.build_wrap arg in
+        let res = Build.build arg in
         Event.sync (Event.send res_ch res);
         worker wrkr_ch res_ch
 
