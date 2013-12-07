@@ -72,15 +72,19 @@ let put (path : string) (md5 :string) : unit = Hashtbl.replace tbl path md5
 let get (path : string) : string option = 
   try Some (Hashtbl.find tbl path) with Not_found -> None
 
-
 let move (src : string) (dst : string) : unit =
   if 0 <> Sys.command ("mv " ^ src ^ " " ^ dst) then raise (Failure "move")
 
+let collect_garbage () : unit =
+  let open Hashtbl in
+  let tbl' = copy tbl in
+  iter (fun k _ -> if not (Sys.file_exists k) then remove tbl k) tbl' 
   
-  
+
 let dump () : unit = 
   let path = Filename.concat dirname filename in
   try let tmp_path, ch = Filename.open_temp_file "index" "rmd" in
-      Hashtbl.iter (fun file md5 -> output_string ch (file ^ (String.make 1 sep) ^ md5 ^ "\n")) tbl;
+      Hashtbl.iter (fun file md5 -> 
+                      output_string ch (file ^ (String.make 1 sep) ^ md5 ^ "\n")) tbl;
       close_out ch; move tmp_path path
   with _ -> raise (Db_error "Error dumping file")

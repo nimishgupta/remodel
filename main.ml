@@ -130,7 +130,8 @@ let remodel (file : string) (target : Rules.target): unit =
   DAG.ordered_iter (build_parallel collector_ch worker_ch comb_results_ch);
   List.iter (fun _ -> Event.sync (Event.send worker_ch None)) wrkr_tids;
   Event.sync (Event.send collector_ch None);
-  List.iter Thread.join wrkr_tids; Thread.join coll_tid
+  List.iter Thread.join wrkr_tids; Thread.join coll_tid;
+  DB.collect_garbage ()
 
 
 
