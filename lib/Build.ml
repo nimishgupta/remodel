@@ -72,7 +72,10 @@ let build_target (trgt   : Rules.target)
         let file = to_file trgt in
         let force', code = build_file file actn force digest in
         if not (Sys.file_exists file) then failwith "remodel: Failed to build target\n"
-        else let digest' = Some (Digest.to_hex (Digest.file file)) in force', code, digest')
+        else if force' 
+             then let digest' = Some (Digest.to_hex (Digest.file file)) 
+             in force', code, digest'
+        else force', code, digest)
   in to_rt trgt actn frc' code' digest'
 
 (* XXX : provide a dummy to support -n *)

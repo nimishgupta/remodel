@@ -51,7 +51,7 @@ let dispatch (wrkr_ch : Build.t option Event.channel) (v : Vertex.t) : unit =
 
 
 let mark_succ_dirty (v : Vertex.t) : unit =
-  List.iter (fun v -> DirtySet.mark v) (DAG.succ v)
+  List.iter (fun v' -> DirtySet.mark v') (DAG.succ v)
   
 let process_res (r : Build.rt) (acc : bool): bool =
   let open Vertex in
@@ -67,17 +67,17 @@ let process_res (r : Build.rt) (acc : bool): bool =
 
     | true, _, _, _          -> cleanse v; true
 
-    | false, true, Some c, Some d ->
-        if c = 0 then
-          begin
-            mark_succ_dirty v;
-            cleanse v;
-            put (to_file r.Build.trgt) d;
-            true
-          end
-        else false
+    | false, true, Some c, Some d when c <> 0 -> false
 
-    | false, _, None,   Some d -> cleanse v; put (to_file r.Build.trgt) d; true
+    (* Below pattern relies on above pattern for c <> 0 *)
+    | false, true, None, Some d
+    | false, true, Some _, Some d ->
+        mark_succ_dirty v;
+        cleanse v;
+        put (to_file r.Build.trgt) d;
+        true
+
+    | false, false, None, Some d -> true
 
     | _, _, _, _ -> assert false)
 
