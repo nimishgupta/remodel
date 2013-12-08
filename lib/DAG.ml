@@ -5,6 +5,8 @@ module V = Vertex
 
 module DAG = Imperative.Digraph.Concrete (V)
 
+type t = DAG.t
+
 (* TODO : Make g local *)
 let g = DAG.create ()
 
@@ -21,8 +23,8 @@ let process_rule (action_of : Rules.target -> Rules.action)
   
 
 
-let has_cycle () : bool =
-  let module DFS = Graph.Traverse.Dfs (DAG) in DFS.has_cycle g
+let has_cycle (dag : t) : bool =
+  let module DFS = Graph.Traverse.Dfs (DAG) in DFS.has_cycle dag
 
 
 module TargetSet = Hashtbl.Make (struct
@@ -60,21 +62,25 @@ let rec _build_graph (rules : Rules.t)
   
 
 (* Detect cycle using a seen set *)
-let build_graph (rules : Rules.t) (target : Rules.target): unit =
+let build_graph (rules : Rules.t) (target : Rules.target): t =
   _build_graph rules target;
-  assert (not (has_cycle ()));
-  TargetSet.clear seen
+  assert (not (has_cycle g));
+  TargetSet.clear seen;
+  g
       
-let succ (v : V.t) : V.t list = DAG.succ g v
+let succ (dag : DAG.t) (v : V.t) : V.t list = DAG.succ dag v
 
 
 (* topological sort *)
-let rev_topo () : V.t list = 
+let rev_topo (dag : t) : V.t list = 
   let module T = Graph.Topological.Make (DAG) in
-    T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) g []
+    T.fold (fun (v : V.t) (vlst : V.t list) -> v :: vlst) dag []
 
 
 (* TODO : Cleanup *)
+
+
+(* Map from vertex -> its logical time stamp in build order *)
 module TSM = Map.Make (struct
   type t = V.t
   let compare = V.compare
@@ -82,20 +88,23 @@ end)
 
 type logical_ts = int TSM.t
 
-let happens_before (vlst : V.t list) : logical_ts = 
-  let f = fun (v : V.t) (ts_map : logical_ts) -> 
-          if (DAG.in_degree g v) > 0 
-          then let preds = DAG.pred g v in 
-               let maxdist = List.fold_right (fun (v : V.t) (dist : int) ->
-                                                 let cur_dist = try TSM.find v ts_map with Not_found -> 0
-                                                 in max dist cur_dist)
-                             preds 0 in
-                             TSM.add v (maxdist + 1) ts_map
-          else TSM.add v 0 ts_map
+
+let happens_before (dag : t) (vlst : V.t list) : logical_ts = 
+  let f (v : V.t) (ts_map : logical_ts) =
+        if (DAG.in_degree dag v) > 0 
+        then let preds = DAG.pred dag v in 
+             let maxdist = List.fold_right (fun (v : V.t) (dist : int) ->
+                                              let cur_dist = try TSM.find v ts_map 
+                                                             with Not_found -> 0
+                                              in max dist cur_dist)
+                           preds 0 in
+                          TSM.add v (maxdist + 1) ts_map
+        else TSM.add v 0 ts_map
   in List.fold_right f vlst TSM.empty
 
 
 (* Construct an inverted map *)
+(* Map from logical timestamp to list of vertex *)
 module ITSM = Map.Make (struct
   type t = int
   let compare = Pervasives.compare
@@ -108,7 +117,17 @@ let happens_before' (m : logical_ts) : inverted_ts =
 
 let (|>) v f = f v
 
-let imap () = rev_topo () |> happens_before |> happens_before'
+let imap (dag : t) = (rev_topo dag) |> (happens_before dag) |> happens_before'
 
-let ordered_iter (f : V.t list -> unit) : unit =
-  ITSM.iter (fun _ v -> f v)  (imap ())
+
+type build_order_t = inverted_ts
+
+
+let make_build_order (dag : DAG.t) = imap dag
+
+let max_parallelism (build_info : build_order_t) : int =
+  ITSM.fold (fun _ vlst npar -> max npar (List.length vlst)) build_info 0
+
+
+let ordered_iter (build_info : build_order_t) (f : V.t list -> unit) : unit =
+  ITSM.iter (fun _ v -> f v) build_info

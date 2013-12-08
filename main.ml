@@ -47,12 +47,12 @@ let process_vertex_to_build (v : Vertex.t) : Build.t =
   let dgst = (if not (is_pseudo trgt) then DB.get (to_file trgt) else None) in
   Build.to_t trgt actn is_dirty dgst
 
-let mark_succ_dirty (v : Vertex.t) : unit =
-  List.iter (fun v' -> DirtySet.mark v') (DAG.succ v)
+let mark_succ_dirty (dag : DAG.t) (v : Vertex.t) : unit =
+  List.iter (fun v' -> DirtySet.mark v') (DAG.succ dag v)
 
 (* TODO : Reconsider dispatch and process code in wake that target abstraction
           and vertex abstraction are completely falling apart *)
-let process_res_after_build (r : Build.t): unit =
+let process_res_after_build (dag : DAG.t) (r : Build.t): unit =
   let open Vertex in
   let open Rules in
   let v = to_vertex r.Build.target r.Build.action in
@@ -60,7 +60,7 @@ let process_res_after_build (r : Build.t): unit =
      | true, _, _    -> DirtySet.cleanse v
 
      | false, true, Some d ->
-         mark_succ_dirty v;
+         mark_succ_dirty dag v;
          DirtySet.cleanse v;
          DB.put (to_file r.Build.target) d;
 
@@ -68,27 +68,32 @@ let process_res_after_build (r : Build.t): unit =
 
      | _, _, _ -> assert false)
 
+let init_md5_db () : unit = 
+ (try DB.init ()
+   with DB.Db_error str -> 
+     Log.error ("Error initializing remodel index: " ^ str) 1);
+  at_exit DB.dump
+
 
 let remodel (file : string) (target : Rules.target): unit = 
   let cin = open_in file in
-  let rules = Parser.program Lexer.token (Lexing.from_channel cin)
-  in DAG.build_graph rules target;
-     (try DB.init ()
-      with DB.Db_error str -> 
-        Log.error ("Error initializing remodel index: " ^ str) 1);
-     at_exit DB.dump;
-     let size = if !njobs > 0 then !njobs else 10 (* TODO *) in
-     let session, parallel_builder = Parallel.start process_vertex_to_build
-                                              Build.build
-                                              process_res_after_build
-                                              size
-     in DAG.ordered_iter parallel_builder;
-        Parallel.terminate (session);
-        (* Since we have built everything successfully, every valid
-         * dependency should have an entry in DB, its an opportune
-         * time to prune dead entries, say on account of target renaming
-         *)
-        DB.collect_garbage ()
+  let rules = Parser.program Lexer.token (Lexing.from_channel cin) in
+  let dag = DAG.build_graph rules target in
+  let build_info = DAG.make_build_order dag in
+  init_md5_db (); (* good time to init md5 db *)
+  let size = if !njobs > 0 then !njobs 
+             else DAG.max_parallelism build_info in
+  Log.info ("Max concurrency: " ^ (string_of_int size));
+  let session, parallel_builder = 
+    Parallel.start process_vertex_to_build
+      Build.build (process_res_after_build dag) size
+  in DAG.ordered_iter build_info parallel_builder;
+     Parallel.terminate (session);
+     (* Since we have built everything successfully, every valid
+      * dependency should have an entry in DB, its an opportune
+      * time to prune dead entries, say on account of target renaming
+      *)
+     DB.collect_garbage ()
 
 
 
