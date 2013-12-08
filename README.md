@@ -53,7 +53,7 @@ Build Instructions :-
 Tests are located under _test_ directory. They can be run using 
 _remodel.native_ built in the previous step. The details are as follows :  
 
-Use command "remodel.native [ -f  <remodelfile name> ] <arg>" to run a test
+Use command "remodel.native [ -f  <remodelfile name> ] arg" to run a test
 
 | remodelfile name  | arg | test description                    |
 | ----------------  | --- | -----------------                   |
@@ -79,9 +79,9 @@ specified on command line, _remodel_ looks for a _DEFAULT_ target in rules file 
 
 _remodel_ maintains a record of md5 digest of files in file _index.rmd_ located in a hidden
 directory _.remodel_. Using entries in this record, _remodel_ is able to determine if a file
-has changed or not from its previous build. Before triggering any command a current digest of
-file is computed and is matched with digest entry of the file. The target is rebuilt if the 
-content does not match.
+has changed from its previous build. Before triggering any command, current digest of file
+is computed and is matched with digest entry of the file. Target is rebuilt if the digests
+ do not match.
 
 Upon changing any command to build the target, _remodel_ does not rebuilds the target on the
 next run. The developer, if required, can force _remodel_ to rebuild target using  
@@ -95,7 +95,7 @@ _index.rmd_ is a plain text file that contains dependency file path and its md5 
 dependency files that exist in rules file are present in _index.rmd_.  _remodel_ checks for 
 existence of _.remodel/index.rmd_ on every run. If it is not found then _remodel_ creates
 one, builds the target specified and updates index.rmd with new digest. As dependency files
-are changed their md5 is updated in this file.
+are changed, their md5 is updated in this file.
 
 
 Over time as project evolves, some files may be renamed. This renaming may lead to garbage
