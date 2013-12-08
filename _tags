@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 462d63fec7c8be865d6e0a7c4fe3e669)
+# DO NOT EDIT (digest: 0aa7a83b2a9e034529323d9d46852a19)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -19,10 +19,10 @@
 <lib/*.ml{,i}>: pkg_threads
 <lib/*.ml{,i}>: pkg_unix
 # Executable remodel
-"main.native": use_core
-"main.native": pkg_ocamlgraph
-"main.native": pkg_threads
-"main.native": pkg_unix
+"remodel.native": use_core
+"remodel.native": pkg_ocamlgraph
+"remodel.native": pkg_threads
+"remodel.native": pkg_unix
 <*.ml{,i}>: use_core
 <*.ml{,i}>: pkg_ocamlgraph
 <*.ml{,i}>: pkg_threads

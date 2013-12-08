@@ -1,9 +1,10 @@
 # OASIS_START
-# DO NOT EDIT (digest: 55f6772755304d7a19f8e142541e746c)
+# DO NOT EDIT (digest: 82c7a9bca10ecae820aa123d0a36c1c9)
 Build
 DAG
 DB
 DirtySet
+Parallel
 Rules
 Vertex
 Lexer

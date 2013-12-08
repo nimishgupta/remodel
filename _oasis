@@ -9,7 +9,7 @@ License:     LGPL
 Executable remodel
   Path:       .
   BuildTools: ocamlbuild
-  MainIs:     main.ml
+  MainIs:     remodel.ml
   CompiledObject: native
   BuildDepends:
     core
