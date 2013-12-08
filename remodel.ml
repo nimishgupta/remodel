@@ -12,7 +12,7 @@ let usage_msg = "Usage: remodel [options] [target] ...\n" ^
 
 let njobs      = ref 0
 let rmdfile    = ref None
-let demo       = ref false
+(* let demo       = ref false *)
 let spl_target = ref None
 let invalidate = ref false
 (*
@@ -31,7 +31,7 @@ let spec =
 [
  ("-j", Arg.Int set_njobs, "Number of jobs to execute in parallel. All actions are run in parallel by default");
  ("-f", Arg.String (fun s -> rmdfile := Some s), "Use a file other than default (\"remodelfile\" | \"Remodelfile\").");
- ("-n", Arg.Set demo, "Don't run commands. Prints commands that shall be run.");
+(* ("-n", Arg.Set demo, "Don't run commands. Prints commands that shall be run."); *)
  ("-B", Arg.Set invalidate, "Force rebuild of all dependencies.");
 ]
 
@@ -89,7 +89,6 @@ let remodel (rules : Rules.t) (target : Rules.target): unit =
              else DAG.max_parallelism build_info in
   (if size = 0 then
    Log.error ("Nothing to be done for \"" ^ (Rules.to_target_string target) ^ "\"") 0);
-  Log.info ("Max concurrency: " ^ (string_of_int size));
 
   init_md5_db (); (* good time to init md5 db *)
   let session, parallel_builder = 
@@ -115,8 +114,6 @@ let main =
     let target = (match !spl_target with 
       | None -> Rules.to_target "DEFAULT" 
       | Some t -> Rules.to_target t) in
-
-    Log.info ("Building target " ^ (Rules.to_target_string target));
 
     try 
       let file = List.find Sys.file_exists candidate_files in
