@@ -50,8 +50,7 @@ let process_vertex_to_build (v : Vertex.t) : Build.t =
 let mark_succ_dirty (dag : DAG.t) (v : Vertex.t) : unit =
   List.iter (fun v' -> DirtySet.mark v') (DAG.succ dag v)
 
-(* TODO : Reconsider dispatch and process code in wake that target abstraction
-          and vertex abstraction are completely falling apart *)
+(* XXX : target and action are not a good abstraction in retrospect, they are falling apart *)
 let process_res_after_build (dag : DAG.t) (r : Build.t): unit =
   let open Vertex in
   let open Rules in
@@ -76,14 +75,16 @@ let init_md5_db () : unit =
 
 
 let remodel (file : string) (target : Rules.target): unit = 
-  let cin = open_in file in
-  let rules = Parser.program Lexer.token (Lexing.from_channel cin) in
+  let ch = open_in file in
+  let rules = Parser.program Lexer.token (Lexing.from_channel ch) in
   let dag = DAG.build_graph rules target in
   let build_info = DAG.make_build_order dag in
-  init_md5_db (); (* good time to init md5 db *)
   let size = if !njobs > 0 then !njobs 
              else DAG.max_parallelism build_info in
+  (if size = 0 then Log.error ("Nothing to be done for \"" ^ (Rules.to_target_string target) ^ "\"") 0);
   Log.info ("Max concurrency: " ^ (string_of_int size));
+
+  init_md5_db (); (* good time to init md5 db *)
   let session, parallel_builder = 
     Parallel.start process_vertex_to_build
       Build.build (process_res_after_build dag) size
@@ -108,9 +109,11 @@ let main =
       | None -> Rules.to_target "DEFAULT" 
       | Some t -> Rules.to_target t) in
 
+    Log.info ("Building target " ^ (Rules.to_target_string target));
+
     try 
       let file = List.find Sys.file_exists candidate_files in
       remodel file target
-    with Not_found -> Log.error "Invalid input file" 1
+    with Not_found -> Log.error "Rules file not found" 1
 
-let () =  main
+let () = main

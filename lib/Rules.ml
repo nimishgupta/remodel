@@ -8,7 +8,6 @@ type target =
   | File of file
   | Default
 
-(* TODO : check if we need to check for empty string *)
 let to_target (file : string) : target =
   if "DEFAULT" = file then Default else File file
 

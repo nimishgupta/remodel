@@ -54,7 +54,7 @@ let rec _build_graph (rules : Rules.t)
     let deps, actn = (try Rules.find target rules
                       with Not_found -> 
                              (if (is_pseudo target) || not (Sys.file_exists (to_file target))
-                              then Log.error ("No rule to make target "^target_str^"\"") 1);
+                              then Log.error ("No rule to make target \""^target_str^"\"") 1);
                              Rules.to_deps [], Rules.to_action None)
     in process_rule action_of target deps actn;
        TargetSet.add seen target 0;

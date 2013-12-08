@@ -1,0 +1,4 @@
+DEFAULT <- baz
+baz <- foo.t, bar.t: "touch baz"
+foo.t <- foo.cpp:    "touch foo.t"
+bar.t <- bar1.cpp:   "touch bar.t"
