@@ -5,6 +5,7 @@ let usage_msg = "Usage: remodel [options] [target] ...\n" ^
     -j for controlling parallelism
     -f for fixed filename
     -n for only printing info
+    -B for forcing rebuild
     -d for extra debugging
     -s for silent mode (no printing of action)
 *)
@@ -13,6 +14,7 @@ let njobs      = ref 0
 let rmdfile    = ref None
 let demo       = ref false
 let spl_target = ref None
+let invalidate = ref false
 (*
 let debug: bool = ref false
 let silent: bool = ref false
@@ -30,10 +32,10 @@ let spec =
  ("-j", Arg.Int set_njobs, "Number of jobs to execute in parallel. All actions are run in parallel by default");
  ("-f", Arg.String (fun s -> rmdfile := Some s), "Use a file other than default (\"remodelfile\" | \"Remodelfile\").");
  ("-n", Arg.Set demo, "Don't run commands. Prints commands that shall be run.");
+ ("-B", Arg.Set invalidate, "Force rebuild of all dependencies.");
 ]
 
 
-let invalidated = ref false
 let default = ["remodelfile"; "Remodelfile"]
 
 (* TODO : All threading stuff should be moved to Parallel module *)
@@ -43,7 +45,7 @@ let dispatch (wrkr_ch : Build.t option Event.channel) (v : Vertex.t) : unit =
   let open Rules in
   let trgt = Vertex.target_in v in
   let actn = Vertex.action_in v in
-  let is_dirty = (!invalidated) || DirtySet.is_dirty v in
+  let is_dirty = (!invalidate) || DirtySet.is_dirty v in
   let dgst = (if not (is_pseudo trgt) then DB.get (to_file trgt) else None) in
   let warg = Build.to_t trgt actn is_dirty dgst
   in Event.sync (Event.send wrkr_ch (Some warg))
@@ -116,16 +118,11 @@ let rec thread_pool (worker : 'a -> 'b) (arg : 'a) (n : int) : Thread.t list =
  
 let remodel (file : string) (target : Rules.target): unit = 
   let cin = open_in file in
-  let rules = Parser.program Lexer.token (Lexing.from_channel cin) in
-  DAG.build_graph rules target;
-  (try DB.init ()
-   with DB.Db_error str -> Log.error ("Error initializing remodel index: " ^ str) 1);
-  let digest = Digest.to_hex (Digest.file file)
-  in (invalidated := match DB.get file with
-        | None -> true (* No entry for rules file *)
-        | Some digest' when digest <> digest' -> true
-        | Some _ -> false);
-
+  let rules = Parser.program Lexer.token (Lexing.from_channel cin)
+  in DAG.build_graph rules target;
+     (try DB.init ()
+      with DB.Db_error str -> 
+        Log.error ("Error initializing remodel index: " ^ str) 1);
      at_exit DB.dump;
      let size  = if !njobs > 0 then !njobs else 10 (* TODO *) in
      let collector_ch    = Event.new_channel () in
@@ -140,10 +137,8 @@ let remodel (file : string) (target : Rules.target): unit =
      List.iter Thread.join wrkr_tids; Thread.join coll_tid;
      (* Since we have built everything successfully, every valid
       * dependency should have an entry in DB, its an opportune
-      * time to add self's digest and prune dead entries, say on
-      * account of target renaming
+      * time to prune dead entries, say on account of target renaming
       *)
-    DB.put file digest;
     DB.collect_garbage ()
 
 
