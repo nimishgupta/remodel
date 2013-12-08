@@ -19,6 +19,8 @@ Options:
   -j  To specify the number of jobs to execute in parallel.  
   -f  To specify a file other than (r|R)emodelfile.  
   -B  To force rebuild of dependencies.  
+  -help To display help menu.  
+  --help to display help menu.  
 
 
 =============================
