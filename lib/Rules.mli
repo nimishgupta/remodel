@@ -30,3 +30,5 @@ val to_file: target -> string
 val print_action: action -> unit
 
 val to_target_string: target -> string
+
+val empty_rules: t

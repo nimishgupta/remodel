@@ -74,3 +74,5 @@ let find = Rules.find
 let print_action (actn : action) : unit = match actn with
   | Some a -> Log.out a
   | None -> ()
+
+let empty_rules = Rules.empty

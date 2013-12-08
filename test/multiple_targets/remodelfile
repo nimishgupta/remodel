@@ -1,0 +1,3 @@
+DEFAULT <- ab
+ab, xy <- a, b, x, y : "touch ab xy"
+a, b, x, y <- remodelfile : "touch a b x y"

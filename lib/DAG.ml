@@ -48,24 +48,23 @@ let rec _build_graph (rules : Rules.t)
   let open Rules in
   let action_of = Rules.rule_action rules in
   let target_str = to_target_string target in
-  if TargetSet.mem seen target 
-  then Log.error ("Cycle detected in graph: \""^target_str^"\"") 1
-  else
-    let deps, actn = (try Rules.find target rules
-                      with Not_found -> 
-                             (if (is_pseudo target) || not (Sys.file_exists (to_file target))
-                              then Log.error ("No rule to make target \""^target_str^"\"") 1);
-                             Rules.to_deps [], Rules.to_action None)
-    in process_rule action_of target deps actn;
-       TargetSet.add seen target 0;
-       List.iter (_build_graph rules) (deps_to_targets deps)
+  if not (TargetSet.mem seen target)
+  then let deps, actn = 
+         (try Rules.find target rules
+          with Not_found -> 
+            (if (is_pseudo target) || not (Sys.file_exists (to_file target))
+             then Log.error ("No rule to make target \""^target_str^"\"") 1);
+             Rules.to_deps [], Rules.to_action None)
+       in process_rule action_of target deps actn;
+          TargetSet.add seen target 0;
+          List.iter (_build_graph rules) (deps_to_targets deps)
   
 
 (* Detect cycle using a seen set *)
 let build_graph (rules : Rules.t) (target : Rules.target): t =
   _build_graph rules target;
-  assert (not (has_cycle g));
   TargetSet.clear seen;
+  (if has_cycle g then Log.error "Cyclic Dependencies detected" 2);
   g
       
 let succ (dag : DAG.t) (v : V.t) : V.t list = DAG.succ dag v

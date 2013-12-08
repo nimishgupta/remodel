@@ -78,7 +78,8 @@ let to_rules (file : string) : Rules.t =
   try
     let ch = open_in file in
     Parser.program Lexer.token (Lexing.from_channel ch)
-  with _ -> Log.error ("Parse error in rule file: " ^ file) 2
+  with _ -> Log.error ("Parse error in rule file: " ^ file) 2;
+            Rules.empty_rules
 
   
 let remodel (rules : Rules.t) (target : Rules.target): unit = 
@@ -86,7 +87,8 @@ let remodel (rules : Rules.t) (target : Rules.target): unit =
   let build_info = DAG.make_build_order dag in
   let size = if !njobs > 0 then !njobs 
              else DAG.max_parallelism build_info in
-  (if size = 0 then Log.error ("Nothing to be done for \"" ^ (Rules.to_target_string target) ^ "\"") 0);
+  (if size = 0 then
+   Log.error ("Nothing to be done for \"" ^ (Rules.to_target_string target) ^ "\"") 0);
   Log.info ("Max concurrency: " ^ (string_of_int size));
 
   init_md5_db (); (* good time to init md5 db *)
