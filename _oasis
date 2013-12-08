@@ -28,6 +28,7 @@ Library core
     DAG,
     DB,
     DirtySet,
+    Parallel,
     Rules,
     Vertex
   BuildTools: ocamlbuild
