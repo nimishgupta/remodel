@@ -112,7 +112,6 @@ let rec thread_pool (worker : 'a -> 'b) (arg : 'a) (n : int) : Thread.t list =
   else (Thread.create worker arg) :: thread_pool worker arg (n - 1)
 
  
-(* TODO : Make use of target *)
 let remodel (file : string) (target : Rules.target): unit = 
   let cin = open_in file in
   let rules = Parser.program Lexer.token (Lexing.from_channel cin) in
@@ -131,11 +130,13 @@ let remodel (file : string) (target : Rules.target): unit =
   List.iter (fun _ -> Event.sync (Event.send worker_ch None)) wrkr_tids;
   Event.sync (Event.send collector_ch None);
   List.iter Thread.join wrkr_tids; Thread.join coll_tid;
+  (* Since we have built everything successfully, every valid
+   * dependency should have an entry in DB, its an opportune
+   * time to prune dead entries, say on account of file renaming
+   *)
   DB.collect_garbage ()
 
 
-
-(* TODO : if a filename is specified on command line then change process root as per the directory *)
 let main =
     Arg.parse spec special_target usage_msg;
 
