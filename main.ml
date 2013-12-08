@@ -22,7 +22,8 @@ let set_njobs (j : int) : unit =
   if j >= 0 then njobs := j
   else raise (Arg.Bad ("Invalid argument " ^ (string_of_int j)))
 
-let special_target (t : string) : unit = spl_target := Some t
+let special_target (t : string) : unit =
+  spl_target := Some t
 
 let spec =
 [
@@ -32,6 +33,7 @@ let spec =
 ]
 
 
+let invalidated = ref false
 let default = ["remodelfile"; "Remodelfile"]
 
 (* TODO : All threading stuff should be moved to Parallel module *)
@@ -41,7 +43,7 @@ let dispatch (wrkr_ch : Build.t option Event.channel) (v : Vertex.t) : unit =
   let open Rules in
   let trgt = Vertex.target_in v in
   let actn = Vertex.action_in v in
-  let is_dirty = DirtySet.is_dirty v in
+  let is_dirty = (!invalidated) || DirtySet.is_dirty v in
   let dgst = (if not (is_pseudo trgt) then DB.get (to_file trgt) else None) in
   let warg = Build.to_t trgt actn is_dirty dgst
   in Event.sync (Event.send wrkr_ch (Some warg))
@@ -117,24 +119,32 @@ let remodel (file : string) (target : Rules.target): unit =
   let rules = Parser.program Lexer.token (Lexing.from_channel cin) in
   DAG.build_graph rules target;
   (try DB.init ()
-   with DB.Db_error str -> Log.error "Error initializing remodel index" 1);
-  at_exit DB.dump;
-  let size  = if !njobs > 0 then !njobs else 10 (* TODO *) in
-  let collector_ch    = Event.new_channel () in
-  let worker_ch       = Event.new_channel () in
-  let results_ch      = Event.new_channel () in
-  let comb_results_ch = Event.new_channel () in
-  let coll_tid  = List.hd (thread_pool (collector collector_ch results_ch) comb_results_ch 1) in
-  let wrkr_tids = thread_pool (worker worker_ch) results_ch size in
-  DAG.ordered_iter (build_parallel collector_ch worker_ch comb_results_ch);
-  List.iter (fun _ -> Event.sync (Event.send worker_ch None)) wrkr_tids;
-  Event.sync (Event.send collector_ch None);
-  List.iter Thread.join wrkr_tids; Thread.join coll_tid;
-  (* Since we have built everything successfully, every valid
-   * dependency should have an entry in DB, its an opportune
-   * time to prune dead entries, say on account of file renaming
-   *)
-  DB.collect_garbage ()
+   with DB.Db_error str -> Log.error ("Error initializing remodel index: " ^ str) 1);
+  let digest = Digest.to_hex (Digest.file file)
+  in (invalidated := match DB.get file with
+        | None -> true (* No entry for rules file *)
+        | Some digest' when digest <> digest' -> true
+        | Some _ -> false);
+
+     at_exit DB.dump;
+     let size  = if !njobs > 0 then !njobs else 10 (* TODO *) in
+     let collector_ch    = Event.new_channel () in
+     let worker_ch       = Event.new_channel () in
+     let results_ch      = Event.new_channel () in
+     let comb_results_ch = Event.new_channel () in
+     let coll_tid  = List.hd (thread_pool (collector collector_ch results_ch) comb_results_ch 1) in
+     let wrkr_tids = thread_pool (worker worker_ch) results_ch size in
+     DAG.ordered_iter (build_parallel collector_ch worker_ch comb_results_ch);
+     List.iter (fun _ -> Event.sync (Event.send worker_ch None)) wrkr_tids;
+     Event.sync (Event.send collector_ch None);
+     List.iter Thread.join wrkr_tids; Thread.join coll_tid;
+     (* Since we have built everything successfully, every valid
+      * dependency should have an entry in DB, its an opportune
+      * time to add self's digest and prune dead entries, say on
+      * account of target renaming
+      *)
+    DB.put file digest;
+    DB.collect_garbage ()
 
 
 let main =

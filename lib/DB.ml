@@ -38,7 +38,7 @@ let populate (ch : in_channel): unit =
         else let file = List.nth parts 0 in
              let hash = List.nth parts 1 in
              Hashtbl.add tbl file hash; process ()
-    with End_of_file -> close_in ch
+    with End_of_file -> ()
   in process ()
   
 let init () : unit = 
@@ -46,13 +46,13 @@ let init () : unit =
            Sys.is_directory dirname)
    then create_dir dirname);
   let path = Filename.concat dirname filename in
-  let fd = open_file path in
-  if not (try_lock_file fd)
-  then raise (Db_error ("Failed trying to lock file " ^ path))
-  else let in_chan = Unix.in_channel_of_descr fd in
-       set_binary_mode_in in_chan false;
-       populate in_chan;
-       descr := Some fd
+  let fd = open_file path
+  in if not (try_lock_file fd)
+     then raise (Db_error ("Failed trying to lock file " ^ path))
+     else let in_chan = Unix.in_channel_of_descr fd in
+          set_binary_mode_in in_chan false;
+          populate in_chan;
+          descr := Some fd
 
 let put (path : string) (md5 :string) : unit =
   Hashtbl.replace tbl path md5
