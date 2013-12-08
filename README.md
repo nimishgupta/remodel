@@ -25,7 +25,7 @@ Options:
 
 =============================
 
-#### Building and Installing _remodel_
+### Building and Installing _remodel_
 
 remodel is written in ocaml. The dependencies required to build _remodel_ are
 
@@ -48,12 +48,12 @@ Build Instructions :-
 
 ===========================
 
-#### Tests
+### Tests
 
 Tests are located under _test_ directory. They can be run using 
 _remodel.native_ built in the previous step. The details are as follows :  
 
-Use command "remodel.native -f <remodelfile name> <arg> " to run a test
+Use command "remodel.native [ -f  <remodelfile name> ] <arg>" to run a test
 
 | remodelfile name  | arg | test description                    |
 | ----------------  | --- | -----------------                   |
@@ -63,3 +63,55 @@ Use command "remodel.native -f <remodelfile name> <arg> " to run a test
 | multiple_targets/ | -   | builds multiple target              |
 | cycle/*           | -/a | Cyclic dependency detection         |
 | vanilla/          | -   | alternate actions, quick playground |
+
+
+=========================================
+
+### Working
+
+#### Dependency Management
+
+_remodel_ parses the input file to form a dependency graph. Unless any particular target is
+specified on command line, _remodel_ looks for a _DEFAULT_ target in rules file to build.
+
+
+#### Determining which target needs to be rebuild
+
+_remodel_ maintains a record of md5 digest of files in file _index.rmd_ located in a hidden
+directory _.remodel_. Using entries in this record, _remodel_ is able to determine if a file
+has changed or not from its previous build. Before triggering any command a current digest of
+file is computed and is matched with digest entry of the file. The target is rebuilt if the 
+content does not match.
+
+Upon changing any command to build the target, _remodel_ does not rebuilds the target on the
+next run. The developer, if required, can force _remodel_ to rebuild target using  
+
+  _remodel.native_ -B _target_
+
+
+#### Maintaining index.rmd record
+
+_index.rmd_ is a plain text file that contains dependency file path and its md5 digest. Only
+dependency files that exist in rules file are present in _index.rmd_.  _remodel_ checks for 
+existence of _.remodel/index.rmd_ on every run. If it is not found then _remodel_ creates
+one, builds the target specified and updates index.rmd with new digest. As dependency files
+are changed their md5 is updated in this file.
+
+
+Over time as project evolves, some files may be renamed. This renaming may lead to garbage
+entries in _index.rmd_. _remodel_ takes care of this and prunes non-existent entries after
+a successfull build.
+
+
+#### Parallelism
+
+_remodel_ determines which rules can be executed independent of each other and executes them
+in parallel. The degree of parallelism can optionally be controlled using "-j" command line
+switch. _remodel_ assigns a logical time to every dependency and executes dependency with
+same logical timestamp in parallel.
+
+
+#### Exclusiveness
+
+In a directory, _remodel_ maintains exclusiveness by taking a lock on _index.rmd_ file so that
+another _remodel_ process cannot clobber the project directory.
