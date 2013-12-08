@@ -25,7 +25,7 @@ Options:
 
 #### Building and Installing _remodel_
 
-remodel is written in ocaml. The dependencies required to build ocaml are
+remodel is written in ocaml. The dependencies required to build _remodel_ are
 
   * ocaml v4.00.1
   * ocamlgraph
