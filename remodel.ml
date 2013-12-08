@@ -70,13 +70,18 @@ let process_res_after_build (dag : DAG.t) (r : Build.t): unit =
 let init_md5_db () : unit = 
  (try DB.init ()
    with DB.Db_error str -> 
-     Log.error ("Error initializing remodel index: " ^ str) 1);
+     Log.error ("Index initialization failed: " ^ str) 1);
   at_exit DB.dump
 
 
-let remodel (file : string) (target : Rules.target): unit = 
-  let ch = open_in file in
-  let rules = Parser.program Lexer.token (Lexing.from_channel ch) in
+let to_rules (file : string) : Rules.t =
+  try
+    let ch = open_in file in
+    Parser.program Lexer.token (Lexing.from_channel ch)
+  with _ -> Log.error ("Parse error in rule file: " ^ file) 2
+
+  
+let remodel (rules : Rules.t) (target : Rules.target): unit = 
   let dag = DAG.build_graph rules target in
   let build_info = DAG.make_build_order dag in
   let size = if !njobs > 0 then !njobs 
@@ -113,7 +118,7 @@ let main =
 
     try 
       let file = List.find Sys.file_exists candidate_files in
-      remodel file target
+      remodel (to_rules file) target
     with Not_found -> Log.error "Rules file not found" 1
 
 let () = main
