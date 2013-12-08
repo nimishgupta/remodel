@@ -53,7 +53,7 @@ Build Instructions :-
 Tests are located under _test_ directory. They can be run using 
 _remodel.native_ built in the previous step. The details are as follows :  
 
-Use command "remodel.native [ -f  <remodelfile name> ] arg" to run a test
+Use command "remodel.native [ -f  \<remodelfile name\> ] \<arg\>" to run a test
 
 | remodelfile name  | arg | test description                    |
 | ----------------  | --- | -----------------                   |
