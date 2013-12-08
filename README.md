@@ -36,10 +36,30 @@ remodel is written in ocaml. The dependencies required to build _remodel_ are
 
 
 Binary name : _remodel.native_  
-Build Instructions :-
+Build Instructions :-  
+
+  Execute the following commands in the project root directory  
 
   * ocaml setup.ml -configure
   * ocaml setup.ml -build
   
   Optional
   * ocaml setup.ml -install
+
+===========================
+
+#### Tests
+
+Tests are located under _test_ directory. They can be run using 
+_remodel.native_ built in the previous step. The details are as follows :  
+
+Use command "remodel.native -f <remodelfile name> <arg> " to run a test
+
+| remodelfile name  | arg | test description                    |
+| ----------------  | --- | -----------------                   |
+| nodefaultremodel  | -   | DEFAULT target missing              |
+| nodefaultremodel  | c   | Rule missing to make a dependency   |
+| compile/          | -   | builds example baz program          |
+| multiple_targets/ | -   | builds multiple target              |
+| cycle/*           | -/a | Cyclic dependency detection         |
+| vanilla/          | -   | alternate actions, quick playground |
