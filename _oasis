@@ -1,8 +1,7 @@
 OASISFormat: 0.3
 Name:        remodel
 Version:     0.1
-Synopsis:    Build system (like make) that used md5 to determine builds
-  rather than timestamps
+Synopsis:    Parallel build system that used md5 to determine build order
 Authors:     Nimish Gupta
 License:     LGPL
 
