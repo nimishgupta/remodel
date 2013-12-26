@@ -10,7 +10,7 @@ let tbl = Hashtbl.create 100
 
 (* TODO : Do we need to play around with umask? *)
 let create_dir (name : string) : unit =
-  try Unix.mkdir name 0o664
+  try Unix.mkdir name 0o775
   with Unix.Unix_error (_, f, str) ->
          raise (Db_error (f ^ ": failed, " ^ str))
 
